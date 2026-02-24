@@ -1,22 +1,30 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { APP_GUARD } from '@nestjs/core';
 import { BullModule } from '@nestjs/bull';
 import { ScheduleModule } from '@nestjs/schedule';
 import { envValidationSchema } from './config/env.validation';
+import { DatabaseModule } from './database/database.module';
 import { HealthController } from './health.controller';
 import { AuthModule } from './modules/auth/auth.module';
+import { RoomsModule } from './modules/rooms/rooms.module';
+import { RatesModule } from './modules/rates/rates.module';
+import { GuestsModule } from './modules/guests/guests.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { PaymentsModule } from './modules/payments/payments.module';
+import { ChannelModule } from './modules/channel-manager/channel.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
-    // Global config with validation
     ConfigModule.forRoot({
       isGlobal: true,
       validationSchema: envValidationSchema,
     }),
 
-    // Rate limiting: 100 requests per minute
     ThrottlerModule.forRoot([
       {
         ttl: 60000,
@@ -24,10 +32,10 @@ import { AuthModule } from './modules/auth/auth.module';
       },
     ]),
 
-    // Scheduled tasks (cron)
+    EventEmitterModule.forRoot(),
+
     ScheduleModule.forRoot(),
 
-    // Redis-based Bull queues
     BullModule.forRootAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
@@ -47,17 +55,16 @@ import { AuthModule } from './modules/auth/auth.module';
       inject: [ConfigService],
     }),
 
-    // === Other modules are added by respective agents ===
-    // TypeOrmModule  — AGENT-02
-    AuthModule,       // AGENT-03
-    // RoomsModule    — AGENT-04
-    // BookingsModule — AGENT-05
-    // GuestsModule   — AGENT-06
-    // RatesModule    — AGENT-07
-    // PaymentsModule — AGENT-08
-    // ChannelModule  — AGENT-09
-    // NotificationsModule — AGENT-10
-    // AnalyticsModule     — AGENT-11
+    DatabaseModule,
+    AuthModule,
+    RoomsModule,
+    RatesModule,
+    GuestsModule,
+    BookingsModule,
+    PaymentsModule,
+    ChannelModule,
+    NotificationsModule,
+    AnalyticsModule,
   ],
   controllers: [HealthController],
   providers: [

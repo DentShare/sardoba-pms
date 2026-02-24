@@ -32,6 +32,17 @@
     "joi": "^17.13.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
+    "@nestjs/event-emitter": "^2.1.0",
+    "@nestjs/typeorm": "^10.0.0",
+    "@nestjs/passport": "^10.0.0",
+    "typeorm": "^0.3.20",
+    "pg": "^8.13.0",
+    "passport": "^0.7.0",
+    "passport-jwt": "^4.0.1",
+    "date-fns": "^3.6.0",
+    "grammy": "^1.30.0",
+    "axios": "^1.7.0",
+    "exceljs": "^4.4.0",
     "@sardoba/shared": "*"
   },
   "devDependencies": {

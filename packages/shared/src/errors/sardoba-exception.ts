@@ -24,6 +24,15 @@ const ERROR_HTTP_MAP: Record<ErrorCode, number> = {
   [ErrorCode.CHECKIN_BEFORE_TODAY]: 400,
   [ErrorCode.CHECKOUT_BEFORE_CHECKIN]: 400,
 
+  // Rate errors
+  [ErrorCode.RATE_NOT_FOUND]: 404,
+  [ErrorCode.RATE_NOT_APPLICABLE]: 422,
+  [ErrorCode.RATE_CONFLICT]: 409,
+
+  // Guest errors
+  [ErrorCode.GUEST_NOT_FOUND]: 404,
+  [ErrorCode.GUEST_DUPLICATE_PHONE]: 409,
+
   // 409 Conflict
   [ErrorCode.ROOM_NOT_AVAILABLE]: 409,
   [ErrorCode.OVERBOOKING_DETECTED]: 409,
@@ -37,6 +46,10 @@ const ERROR_HTTP_MAP: Record<ErrorCode, number> = {
 
   // 429 Too Many Requests
   [ErrorCode.RATE_LIMIT_EXCEEDED]: 429,
+
+  // Channel Manager
+  [ErrorCode.CHANNEL_NOT_FOUND]: 404,
+  [ErrorCode.WEBHOOK_SIGNATURE_INVALID]: 401,
 
   // 502 Bad Gateway
   [ErrorCode.CHANNEL_SYNC_FAILED]: 502,
