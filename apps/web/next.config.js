@@ -1,5 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'standalone',
+  reactStrictMode: true,
+  productionBrowserSourceMaps: false,
   transpilePackages: ['@sardoba/shared'],
   images: {
     remotePatterns: [

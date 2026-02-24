@@ -1,17 +1,26 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { ValidationPipe, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import helmet from 'helmet';
 import { AppModule } from './app.module';
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create(AppModule);
+  const logger = new Logger('Bootstrap');
 
   const configService = app.get(ConfigService);
   const port = configService.get<number>('PORT', 3001);
   const frontendUrl = configService.get<string>(
     'FRONTEND_URL',
     'http://localhost:3000',
+  );
+
+  // Security headers
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
   );
 
   // CORS
@@ -47,10 +56,13 @@ async function bootstrap(): Promise<void> {
   // Global prefix
   app.setGlobalPrefix('v1');
 
+  // Graceful shutdown
+  app.enableShutdownHooks();
+
   await app.listen(port);
 
-  console.log(`Sardoba PMS API running on http://localhost:${port}`);
-  console.log(`Swagger docs: http://localhost:${port}/docs`);
+  logger.log(`Sardoba PMS API running on http://localhost:${port}`);
+  logger.log(`Swagger docs: http://localhost:${port}/docs`);
 }
 
 bootstrap();

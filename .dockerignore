@@ -1,0 +1,15 @@
+.git
+.github
+.vscode
+node_modules
+dist
+.next
+coverage
+*.md
+!package.json
+!package-lock.json
+.env
+.env.*
+!.env.example
+*.log
+.turbo

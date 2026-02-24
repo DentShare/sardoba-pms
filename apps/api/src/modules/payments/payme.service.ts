@@ -365,18 +365,13 @@ export class PaymeService {
     }
 
     if (transaction.state === 1) {
-      // Cancel before perform
+      // Cancel before perform — no money was transferred
       transaction.state = -1;
     } else if (transaction.state === 2) {
-      // Cancel after perform (refund scenario)
+      // Cancel after perform — refund: reverse the payment
       transaction.state = -2;
 
-      // TODO: Handle refund logic here if needed
-      // For now, we log the cancellation. A full refund flow would
-      // reverse the payment and update booking.paidAmount.
-      this.logger.warn(
-        `Payme CancelTransaction after perform: txn=${transactionId}, booking=#${transaction.bookingId}. Refund may be needed.`,
-      );
+      await this.refundPayment(transactionId, transaction.bookingId, transaction.amount);
     }
 
     transaction.cancelTime = Date.now();
@@ -455,6 +450,49 @@ export class PaymeService {
     }
 
     return this.successResponse(requestId, { transactions });
+  }
+
+  // ── Refund ───────────────────────────────────────────────────────────────────
+
+  /**
+   * Reverse a completed payment after Payme cancellation.
+   * Finds the payment by reference, deletes it, and updates booking.paidAmount.
+   */
+  private async refundPayment(
+    transactionId: string,
+    bookingId: number,
+    amount: number,
+  ): Promise<void> {
+    const reference = `payme:${transactionId}`;
+
+    const payment = await this.paymentRepository.findOne({
+      where: { bookingId, reference },
+    });
+
+    if (payment) {
+      // Remove the payment record
+      await this.paymentRepository.remove(payment);
+
+      // Decrease booking.paidAmount
+      const booking = await this.bookingRepository.findOne({
+        where: { id: bookingId },
+      });
+
+      if (booking) {
+        const updatedPaid = Math.max(0, Number(booking.paidAmount) - amount);
+        await this.bookingRepository.update(bookingId, {
+          paidAmount: updatedPaid,
+        });
+      }
+
+      this.logger.log(
+        `Payme refund completed: txn=${transactionId}, booking=#${bookingId}, amount=${amount}`,
+      );
+    } else {
+      this.logger.warn(
+        `Payme refund: payment not found for ref=${reference}, booking=#${bookingId}. Manual review needed.`,
+      );
+    }
   }
 
   // ── Auth & helpers ─────────────────────────────────────────────────────────
