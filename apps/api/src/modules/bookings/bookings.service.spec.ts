@@ -286,14 +286,14 @@ describe('BookingsService', () => {
 
       ratesService.calculate.mockResolvedValue({
         nights: 4,
-        rateApplied: 'Base Rate',
-        pricePerNight: 50000000,
+        rate_applied: 'Base Rate',
+        price_per_night: 50000000,
         total: 200000000,
         breakdown: [
-          { date: '2025-07-01', price: 50000000, rateName: 'Base Rate' },
-          { date: '2025-07-02', price: 50000000, rateName: 'Base Rate' },
-          { date: '2025-07-03', price: 50000000, rateName: 'Base Rate' },
-          { date: '2025-07-04', price: 50000000, rateName: 'Base Rate' },
+          { date: '2025-07-01', price: 50000000, rate_name: 'Base Rate' },
+          { date: '2025-07-02', price: 50000000, rate_name: 'Base Rate' },
+          { date: '2025-07-03', price: 50000000, rate_name: 'Base Rate' },
+          { date: '2025-07-04', price: 50000000, rate_name: 'Base Rate' },
         ],
       });
 
@@ -346,8 +346,8 @@ describe('BookingsService', () => {
 
       ratesService.calculate.mockResolvedValue({
         nights: 4,
-        rateApplied: 'Base Rate',
-        pricePerNight: 50000000,
+        rate_applied: 'Base Rate',
+        price_per_night: 50000000,
         total: 200000000,
         breakdown: [],
       });
@@ -390,8 +390,8 @@ describe('BookingsService', () => {
 
       ratesService.calculate.mockResolvedValue({
         nights: 4,
-        rateApplied: 'Base Rate',
-        pricePerNight: 50000000,
+        rate_applied: 'Base Rate',
+        price_per_night: 50000000,
         total: 200000000,
         breakdown: [],
       });
@@ -456,7 +456,7 @@ describe('BookingsService', () => {
       roomRepo.findOne.mockResolvedValue(room);
 
       const guest = createMockGuest();
-      guestsService.findOrCreate.mockResolvedValue(guest);
+      guestsService.findOrCreate.mockResolvedValue(guest as unknown as Record<string, unknown>);
 
       availabilityService.checkAvailability.mockResolvedValue({
         available: true,
@@ -465,8 +465,8 @@ describe('BookingsService', () => {
 
       ratesService.calculate.mockResolvedValue({
         nights: 4,
-        rateApplied: 'Base Rate',
-        pricePerNight: 50000000,
+        rate_applied: 'Base Rate',
+        price_per_night: 50000000,
         total: 200000000,
         breakdown: [],
       });
@@ -740,8 +740,8 @@ describe('BookingsService', () => {
 
       ratesService.calculate.mockResolvedValue({
         nights: 4,
-        rateApplied: 'Base Rate',
-        pricePerNight: 50000000,
+        rate_applied: 'Base Rate',
+        price_per_night: 50000000,
         total: 200000000,
         breakdown: [],
       });
@@ -767,8 +767,8 @@ describe('BookingsService', () => {
 
       ratesService.calculate.mockResolvedValue({
         nights: 5,
-        rateApplied: 'Base Rate',
-        pricePerNight: 50000000,
+        rate_applied: 'Base Rate',
+        price_per_night: 50000000,
         total: 250000000,
         breakdown: [],
       });

@@ -243,12 +243,10 @@ export class AuthService {
   // ─── PRIVATE HELPERS ────────────────────────────────────────────────────────
 
   private async generateTokens(user: User) {
-    const payload: Omit<JwtPayload, 'iat' | 'exp'> = {
+    const payload = {
       sub: user.id,
       role: user.role,
       propertyId: user.propertyId,
-      iat: 0, // will be overridden by jwt.sign
-      exp: 0, // will be overridden by jwt.sign
     };
 
     const [accessToken, refreshToken] = await Promise.all([

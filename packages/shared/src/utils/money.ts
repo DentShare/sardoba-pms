@@ -62,16 +62,16 @@ export function formatMoney(
 function formatUZS(sum: number): string {
   const formatted = Math.floor(sum)
     .toString()
-    .replace(/\B(?=(\d{3})+(?\!\d))/g, ' ');
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
   return formatted + ' сум';
 }
 
 function formatUSD(dollars: number): string {
-  return '$' + dollars.toFixed(2).replace(/\B(?=(\d{3})+(?\!\d))/g, ',');
+  return '$' + dollars.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
 function formatEUR(euros: number): string {
-  return euros.toFixed(2).replace(/\B(?=(\d{3})+(?\!\d))/g, ',') + ' €';
+  return euros.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',') + ' €';
 }
 
 /**

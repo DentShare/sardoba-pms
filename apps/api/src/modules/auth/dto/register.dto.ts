@@ -9,7 +9,7 @@ import {
   IsIn,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../../../../database/entities/user.entity';
+import { UserRole } from '../../../database/entities/user.entity';
 
 export class RegisterDto {
   @ApiProperty({ example: 'Alisher Karimov', description: 'Full name of the user' })

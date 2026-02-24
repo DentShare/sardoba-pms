@@ -209,13 +209,13 @@ export class BookingsService {
       guestId = existingGuest.id;
     } else if (dto.guest) {
       const guest = await this.guestsService.findOrCreate(propertyId, {
-        firstName: dto.guest.first_name,
-        lastName: dto.guest.last_name,
+        first_name: dto.guest.first_name,
+        last_name: dto.guest.last_name,
         phone: dto.guest.phone,
         email: dto.guest.email,
         nationality: dto.guest.nationality,
       });
-      guestId = guest.id;
+      guestId = (guest as any).id;
     } else {
       throw new SardobaException(
         ErrorCode.VALIDATION_ERROR,
@@ -231,6 +231,7 @@ export class BookingsService {
     );
 
     const rateCalculation = await this.ratesService.calculate(
+      propertyId,
       dto.room_id,
       dto.check_in,
       dto.check_out,
@@ -431,6 +432,7 @@ export class BookingsService {
 
       // Recalculate price
       const rateCalculation = await this.ratesService.calculate(
+        booking.propertyId,
         booking.roomId,
         booking.checkIn,
         booking.checkOut,

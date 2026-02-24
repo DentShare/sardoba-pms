@@ -2,12 +2,14 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
     "baseUrl": "./",
     "paths": {
       "@/*": ["src/*"],
-      "@sardoba/shared": ["../../packages/shared/src"]
-    }
+      "@sardoba/shared": ["../../packages/shared/src"],
+      "@sardoba/shared/*": ["../../packages/shared/src/*"]
+    },
+    "noUnusedLocals": false,
+    "noUnusedParameters": false
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "test"]

@@ -612,7 +612,7 @@ describe('BookingComService', () => {
       );
 
       expect(result.status).toBe('ok');
-      expect(result.action).toBe('booking_created');
+      expect((result as any).action).toBe('booking_created');
       expect(channelManagerService.createSyncLog).toHaveBeenCalledWith(
         channel.id,
         'new_reservation',
@@ -654,7 +654,7 @@ describe('BookingComService', () => {
       );
 
       expect(result.status).toBe('ok');
-      expect(result.action).toBe('booking_cancelled');
+      expect((result as any).action).toBe('booking_cancelled');
       expect(eventEmitter.emit).toHaveBeenCalledWith(
         'booking.cancelled',
         expect.objectContaining({

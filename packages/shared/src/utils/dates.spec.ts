@@ -1,6 +1,5 @@
 import {
   nightsBetween,
-  isTodayOrFuture,
   dateRange,
   datesOverlap,
 } from './dates';
