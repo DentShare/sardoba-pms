@@ -15,3 +15,5 @@ export { Channel, type ChannelType } from './channel.entity';
 export { RoomMapping } from './room-mapping.entity';
 export { SyncLog, type SyncStatus } from './sync-log.entity';
 export { NotificationSettings } from './notification-settings.entity';
+export { PropertyExtra, type PriceType } from './property-extra.entity';
+export { BookingExtra } from './booking-extra.entity';

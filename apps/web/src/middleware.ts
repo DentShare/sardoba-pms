@@ -35,9 +35,10 @@ export function middleware(request: NextRequest) {
  *   - /api/* (API routes)
  *   - /_next/* (Next.js internals)
  *   - /favicon.ico and static assets
+ *   - /book/* (public booking pages)
  */
 export const config = {
   matcher: [
-    '/((?!api|_next|favicon|login|$).*)',
+    '/((?!api|_next|favicon|login|book|$).*)',
   ],
 };

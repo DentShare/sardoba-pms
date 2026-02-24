@@ -17,6 +17,7 @@ import { Rate } from './rate.entity';
 import { User } from './user.entity';
 import { BookingHistory } from './booking-history.entity';
 import { Payment } from './payment.entity';
+import { BookingExtra } from './booking-extra.entity';
 
 export type BookingStatus =
   | 'new'
@@ -32,6 +33,7 @@ export type BookingSource =
   | 'airbnb'
   | 'expedia'
   | 'phone'
+  | 'website'
   | 'other';
 
 @Entity('bookings')
@@ -127,13 +129,16 @@ export class Booking {
   @JoinColumn({ name: 'rate_id' })
   rate!: Rate | null;
 
-  @ManyToOne(() => User, { onDelete: 'RESTRICT' })
+  @ManyToOne(() => User, { nullable: true, onDelete: 'RESTRICT' })
   @JoinColumn({ name: 'created_by' })
-  createdByUser!: User;
+  createdByUser!: User | null;
 
   @OneToMany(() => BookingHistory, (history) => history.booking)
   history!: BookingHistory[];
 
   @OneToMany(() => Payment, (payment) => payment.booking)
   payments!: Payment[];
+
+  @OneToMany(() => BookingExtra, (extra) => extra.booking)
+  extras!: BookingExtra[];
 }

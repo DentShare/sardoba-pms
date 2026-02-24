@@ -54,6 +54,24 @@ function LinkIcon({ className = '', size = 18 }: { className?: string; size?: nu
   );
 }
 
+function GlobeIcon({ className = '', size = 18 }: { className?: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <circle cx="12" cy="12" r="10" />
+      <line x1="2" y1="12" x2="22" y2="12" />
+      <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  );
+}
+
+function StarIcon({ className = '', size = 18 }: { className?: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
 function LogoutIcon({ className = '', size = 20 }: { className?: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
@@ -154,6 +172,16 @@ const navigation: NavItem[] = [
         label: 'Уведомления',
         href: '/settings/notifications',
         icon: <BellIcon size={18} />,
+      },
+      {
+        label: 'Страница бронирования',
+        href: '/settings/booking-page',
+        icon: <GlobeIcon />,
+      },
+      {
+        label: 'Доп. услуги',
+        href: '/settings/extras',
+        icon: <StarIcon />,
       },
     ],
   },

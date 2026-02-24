@@ -13,6 +13,7 @@ import { Booking } from './booking.entity';
 import { Rate } from './rate.entity';
 import { Channel } from './channel.entity';
 import { NotificationSettings } from './notification-settings.entity';
+import { PropertyExtra } from './property-extra.entity';
 
 @Entity('properties')
 export class Property {
@@ -49,6 +50,24 @@ export class Property {
   @Column({ type: 'jsonb', default: '{}' })
   settings!: Record<string, unknown>;
 
+  @Column({ type: 'varchar', length: 100, unique: true, nullable: true })
+  slug!: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  description!: string | null;
+
+  @Column({ type: 'text', nullable: true, name: 'description_uz' })
+  descriptionUz!: string | null;
+
+  @Column({ type: 'varchar', length: 500, nullable: true, name: 'cover_photo' })
+  coverPhoto!: string | null;
+
+  @Column({ type: 'text', array: true, default: '{}' })
+  photos!: string[];
+
+  @Column({ type: 'boolean', name: 'booking_enabled', default: false })
+  bookingEnabled!: boolean;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 
@@ -77,4 +96,7 @@ export class Property {
 
   @OneToMany(() => NotificationSettings, (ns) => ns.property)
   notificationSettings!: NotificationSettings[];
+
+  @OneToMany(() => PropertyExtra, (extra) => extra.property)
+  extras!: PropertyExtra[];
 }

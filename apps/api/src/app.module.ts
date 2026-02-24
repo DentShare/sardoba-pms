@@ -17,6 +17,8 @@ import { PaymentsModule } from './modules/payments/payments.module';
 import { ChannelModule } from './modules/channel-manager/channel.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { PublicBookingModule } from './modules/public-booking/public-booking.module';
+import { PropertyExtrasModule } from './modules/property-extras/property-extras.module';
 
 @Module({
   imports: [
@@ -65,6 +67,8 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     ChannelModule,
     NotificationsModule,
     AnalyticsModule,
+    PropertyExtrasModule,
+    PublicBookingModule,
   ],
   controllers: [HealthController],
   providers: [

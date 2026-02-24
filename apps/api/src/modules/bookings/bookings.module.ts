@@ -20,6 +20,6 @@ import { BookingNumberService } from './booking-number.service';
   ],
   controllers: [BookingsController],
   providers: [BookingsService, AvailabilityService, BookingNumberService],
-  exports: [BookingsService],
+  exports: [BookingsService, AvailabilityService, BookingNumberService],
 })
 export class BookingsModule {}
