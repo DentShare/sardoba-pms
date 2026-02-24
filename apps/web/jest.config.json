@@ -1,0 +1,13 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts", "tsx"],
+  "rootDir": "src",
+  "testRegex": ".*\.spec\.(ts|tsx)$",
+  "transform": {
+    "^.+\.(t|j)sx?$": "ts-jest"
+  },
+  "testEnvironment": "jsdom",
+  "moduleNameMapper": {
+    "^@/(.*)$": "<rootDir>/$1",
+    "^@sardoba/shared$": "<rootDir>/../../packages/shared/src"
+  }
+}
