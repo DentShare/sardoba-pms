@@ -8,7 +8,6 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { api } from '@/lib/api';
 import type { User } from '@sardoba/shared';
 
 export interface AuthContextValue {
@@ -16,12 +15,13 @@ export interface AuthContextValue {
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
+  register: (data: Record<string, unknown>) => Promise<void>;
   logout: () => void;
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
-/** Map API response to User type (interceptor handles snake→camel) */
+/** Map API response to User type (handles both snake_case and camelCase keys) */
 function mapUser(raw: Record<string, unknown>): User {
   return {
     id: raw.id as number,
@@ -43,24 +43,18 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch current user on mount
+  // Fetch current user on mount via the proxy route (cookies sent automatically)
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      setIsLoading(false);
-      return;
-    }
-
-    api
-      .get('/auth/me')
-      .then(({ data }) => {
+    fetch('/api/auth/me', { credentials: 'same-origin' })
+      .then(async (res) => {
+        if (!res.ok) {
+          setUser(null);
+          return;
+        }
+        const data = await res.json();
         setUser(mapUser(data as Record<string, unknown>));
       })
       .catch(() => {
-        // Token is invalid, clear auth state
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        document.cookie = 'access_token=; path=/; max-age=0';
         setUser(null);
       })
       .finally(() => {
@@ -69,32 +63,56 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { data } = await api.post<Record<string, unknown>>('/auth/login', { email, password });
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify({ email, password }),
+    });
 
-    // Global interceptor converts snake_case → camelCase, so use camelCase keys
-    const raw = data as Record<string, unknown>;
-    const accessToken = (raw.accessToken ?? raw.access_token) as string;
-    const refreshToken = (raw.refreshToken ?? raw.refresh_token) as string;
-    const expiresIn = (raw.expiresIn ?? raw.expires_in ?? 86400) as number;
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({})) as Record<string, unknown>;
+      const errorMsg =
+        (errorData.error as Record<string, string> | undefined)?.message ||
+        (errorData.message as string) ||
+        'Login failed';
+      throw new Error(errorMsg);
+    }
 
-    localStorage.setItem('access_token', accessToken);
-    localStorage.setItem('refresh_token', refreshToken);
+    const data = await res.json();
+    setUser(mapUser(data.user as Record<string, unknown>));
+  }, []);
 
-    // Set cookie for middleware
-    document.cookie = `access_token=${accessToken}; path=/; max-age=${expiresIn}; SameSite=Strict; Secure`;
+  const register = useCallback(async (formData: Record<string, unknown>) => {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'same-origin',
+      body: JSON.stringify(formData),
+    });
 
-    setUser(mapUser(raw.user as Record<string, unknown>));
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({})) as Record<string, unknown>;
+      const errorMsg =
+        (errorData.error as Record<string, string> | undefined)?.message ||
+        (errorData.message as string) ||
+        'Registration failed';
+      throw new Error(errorMsg);
+    }
+
+    const data = await res.json();
+    setUser(mapUser(data.user as Record<string, unknown>));
   }, []);
 
   const logout = useCallback(() => {
-    // Call logout endpoint (fire-and-forget)
-    api.post('/auth/logout').catch(() => {
+    // Call proxy logout endpoint (clears HttpOnly cookies server-side)
+    fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'same-origin',
+    }).catch(() => {
       // Ignore errors during logout
     });
 
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    document.cookie = 'access_token=; path=/; max-age=0';
     setUser(null);
     window.location.href = '/login';
   }, []);
@@ -105,9 +123,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       isLoading,
       isAuthenticated: !!user,
       login,
+      register,
       logout,
     }),
-    [user, isLoading, login, logout],
+    [user, isLoading, login, register, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

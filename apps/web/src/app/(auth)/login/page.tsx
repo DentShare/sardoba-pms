@@ -38,9 +38,8 @@ function LoginForm() {
       const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/calendar';
       router.push(redirect);
     } catch (err: unknown) {
-      const axiosError = err as { response?: { data?: { error?: { message?: string } } }; status?: number };
-      if (axiosError?.response?.data?.error?.message) {
-        setError(axiosError.response.data.error.message);
+      if (err instanceof Error && err.message) {
+        setError(err.message);
       } else {
         setError('Неверный email или пароль');
       }

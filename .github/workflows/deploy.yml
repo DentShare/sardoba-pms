@@ -14,8 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Railway
-        # TODO: Pin to specific commit SHA for supply chain security
-        uses: bervProject/railway-deploy@main
+        uses: bervProject/railway-deploy@2fe9b776ea820cf0e64784680a07b8c844d1cf80 # pin@main
         with:
           railway_token: ${{ secrets.RAILWAY_TOKEN }}
           service: sardoba-api
@@ -27,8 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Deploy to Vercel
-        # TODO: Pin to specific commit SHA for supply chain security
-        uses: amondnet/vercel-action@v25
+        uses: amondnet/vercel-action@16e87c0a08142b0d0d33b76aeaf20823c381b9b9 # pin@v25
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
           vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}

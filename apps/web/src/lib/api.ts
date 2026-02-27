@@ -1,8 +1,13 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 import toast from 'react-hot-toast';
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/v1';
+/**
+ * API base URL — routes through the Next.js API proxy so that HttpOnly
+ * cookies (access_token, refresh_token) are attached server-side.
+ * The proxy forwards requests to the NestJS backend with the appropriate
+ * Authorization header.
+ */
+const API_BASE_URL = '/api/proxy';
 
 /**
  * Recursively convert snake_case keys to camelCase.
@@ -29,6 +34,7 @@ function transformKeys(data: unknown): unknown {
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 30000,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -41,22 +47,19 @@ let failedQueue: Array<{
   reject: (error: unknown) => void;
 }> = [];
 
-function processQueue(error: unknown, token: string | null = null) {
+function processQueue(error: unknown) {
   failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
-      prom.resolve(token);
+      prom.resolve(undefined);
     }
   });
   failedQueue = [];
 }
 
-function clearAuthAndRedirect() {
+function redirectToLogin() {
   if (typeof window !== 'undefined') {
-    localStorage.removeItem('access_token');
-    localStorage.removeItem('refresh_token');
-    document.cookie = 'access_token=; path=/; max-age=0';
     window.location.href = '/login';
   }
 }
@@ -93,16 +96,8 @@ function showErrorToast(error: AxiosError) {
   }
 }
 
-// Request interceptor: attach JWT token
-api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-  }
-  return config;
-});
+// No request interceptor needed — cookies are sent automatically via
+// withCredentials and the proxy route reads them server-side.
 
 // Single response interceptor: transform keys, handle token refresh, show error toasts.
 // Order matters: refresh is attempted first for 401s. If refresh fails or error is
@@ -132,8 +127,7 @@ api.interceptors.response.use(
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then((token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
+          .then(() => {
             return api(originalRequest);
           })
           .catch((err) => {
@@ -144,42 +138,26 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      const refreshToken = typeof window !== 'undefined'
-        ? localStorage.getItem('refresh_token')
-        : null;
-
-      if (!refreshToken) {
-        isRefreshing = false;
-        clearAuthAndRedirect();
-        return Promise.reject(error);
-      }
-
       try {
-        const { data } = await axios.post(`${API_BASE_URL}/auth/refresh`, {
-          refresh_token: refreshToken,
+        // Call the Next.js proxy refresh route, which reads the
+        // refresh_token from HttpOnly cookies server-side
+        const refreshRes = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          credentials: 'same-origin',
         });
 
-        // Note: refresh uses raw axios (not `api`), so response is NOT transformed
-        const newAccessToken = data.access_token;
-        const newRefreshToken = data.refresh_token;
-
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('access_token', newAccessToken);
-          if (newRefreshToken) {
-            localStorage.setItem('refresh_token', newRefreshToken);
-          }
-
-          // Update cookie for middleware
-          document.cookie = `access_token=${newAccessToken}; path=/; max-age=${data.expires_in || 3600}; SameSite=Strict; Secure`;
+        if (!refreshRes.ok) {
+          throw new Error('Token refresh failed');
         }
 
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-        processQueue(null, newAccessToken);
+        processQueue(null);
 
+        // Retry the original request — the proxy will pick up the
+        // new access_token cookie automatically
         return api(originalRequest);
       } catch (refreshError) {
-        processQueue(refreshError, null);
-        clearAuthAndRedirect();
+        processQueue(refreshError);
+        redirectToLogin();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "build": "nest build",
+    "build": "nest build && tsc-alias -p tsconfig.build.json",
     "dev": "nest start --watch",
     "start": "nest start",
     "start:prod": "node dist/main",
@@ -12,7 +12,8 @@
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "lint": "eslint \"{src,test}/**/*.ts\" --fix",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "seed:demo": "ts-node -r tsconfig-paths/register src/database/seeds/demo-seed.ts"
   },
   "dependencies": {
     "@nestjs/bull": "^10.2.0",
@@ -46,15 +47,17 @@
     "passport-jwt": "^4.0.1",
     "pg": "^8.13.0",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.9.2",
     "rxjs": "^7.8.1",
     "typeorm": "^0.3.20"
   },
   "devDependencies": {
-    "@nestjs/cli": "^10.4.0",
+    "@nestjs/cli": "^11.0.16",
     "@nestjs/schematics": "^10.2.0",
     "@nestjs/testing": "^10.4.0",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.14",
+    "@types/multer": "^2.0.0",
     "@types/node": "^20.17.0",
     "@typescript-eslint/eslint-plugin": "^7.0.0",
     "@typescript-eslint/parser": "^7.0.0",
@@ -65,6 +68,7 @@
     "ts-jest": "^29.2.0",
     "ts-loader": "^9.5.0",
     "ts-node": "^10.9.2",
+    "tsc-alias": "^1.8.16",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.5.0"
   }
