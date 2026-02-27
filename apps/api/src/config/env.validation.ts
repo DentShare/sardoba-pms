@@ -7,7 +7,7 @@ export const envValidationSchema = Joi.object({
     .default('development'),
   PORT: Joi.number().default(3001),
   APP_URL: Joi.string().uri().default('http://localhost:3001'),
-  FRONTEND_URL: Joi.string().uri().default('http://localhost:3000'),
+  FRONTEND_URL: Joi.string().uri().default('http://localhost:3001'),
 
   // Database (AGENT-02)
   DATABASE_URL: Joi.string().when('NODE_ENV', {
@@ -37,7 +37,11 @@ export const envValidationSchema = Joi.object({
   JWT_REFRESH_EXPIRES_IN: Joi.number().integer().default(604800),
 
   // Encryption (AGENT-06)
-  ENCRYPTION_KEY: Joi.string().allow('').default(''),
+  ENCRYPTION_KEY: Joi.string().when('NODE_ENV', {
+    is: 'production',
+    then: Joi.string().length(64).hex().required(),
+    otherwise: Joi.string().allow('').default(''),
+  }),
 
   // Cloudinary (AGENT-04)
   CLOUDINARY_CLOUD_NAME: Joi.string().allow('').default(''),
@@ -74,6 +78,10 @@ export const envValidationSchema = Joi.object({
   WHATSAPP_API_URL: Joi.string().uri().default('https://graph.facebook.com/v18.0'),
   WHATSAPP_TOKEN: Joi.string().allow('').default(''),
   WHATSAPP_PHONE_NUMBER_ID: Joi.string().allow('').default(''),
+
+  // VAPID (Push Notifications)
+  VAPID_PUBLIC_KEY: Joi.string().allow('').default(''),
+  VAPID_PRIVATE_KEY: Joi.string().allow('').default(''),
 
   // Feature flags
   FEATURE_CHANNEL_MANAGER: Joi.boolean().default(true),

@@ -152,8 +152,8 @@ export class NotificationSettingsService {
     const token = randomBytes(16).toString('hex');
     const TTL_SECONDS = 900; // 15 minutes
 
-    // Store in TelegramService in-memory map
-    this.telegramService.storeConnectToken(token, propertyId);
+    // Store in Redis cache via TelegramService
+    await this.telegramService.storeConnectToken(token, propertyId);
 
     // Build deep link (uses the bot username)
     // Users will get the actual link when they open it in Telegram

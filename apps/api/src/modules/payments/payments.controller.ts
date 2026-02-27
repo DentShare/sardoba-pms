@@ -20,6 +20,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { Public } from '../auth/decorators/public.decorator';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -39,7 +40,9 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1')
+@Controller()
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 @ApiTags('Payments')
 export class PaymentsController {
   constructor(
@@ -105,7 +108,7 @@ export class PaymentsController {
     @Param('id', ParseIntPipe) id: number,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.paymentsService.remove(id, req.user.sub);
+    return this.paymentsService.remove(id, req.user.sub, req.user.propertyId);
   }
 
   // ── POST /v1/webhooks/payme ──────────────────────────────────────────────

@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useState, type FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/lib/auth';
 
-export default function LoginPage() {
+function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { login } = useAuth();
@@ -14,6 +15,9 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+
+  const isRegistered = searchParams.get('registered') === 'true';
+  const isReset = searchParams.get('reset') === 'true';
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -29,8 +33,9 @@ export default function LoginPage() {
     try {
       await login(email, password);
 
-      // Redirect to the intended page or /calendar
-      const redirect = searchParams.get('redirect') || '/calendar';
+      // Redirect to the intended page or /calendar (validated to prevent open redirect)
+      const raw = searchParams.get('redirect') || '/calendar';
+      const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/calendar';
       router.push(redirect);
     } catch (err: unknown) {
       const axiosError = err as { response?: { data?: { error?: { message?: string } } }; status?: number };
@@ -52,6 +57,19 @@ export default function LoginPage() {
           Введите ваши данные для входа
         </p>
       </div>
+
+      {/* Success messages */}
+      {isRegistered && (
+        <div className="rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3">
+          <p className="text-sm text-green-400">Аккаунт успешно создан! Войдите с вашими данными.</p>
+        </div>
+      )}
+
+      {isReset && (
+        <div className="rounded-lg bg-green-500/10 border border-green-500/20 px-4 py-3">
+          <p className="text-sm text-green-400">Пароль успешно изменён! Войдите с новым паролем.</p>
+        </div>
+      )}
 
       {error && (
         <div className="rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3">
@@ -86,9 +104,14 @@ export default function LoginPage() {
 
       {/* Password */}
       <div>
-        <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1.5">
-          Пароль
-        </label>
+        <div className="flex items-center justify-between mb-1.5">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-300">
+            Пароль
+          </label>
+          <Link href="/forgot-password" className="text-xs text-sardoba-gold hover:text-sardoba-gold-light transition-colors">
+            Забыли пароль?
+          </Link>
+        </div>
         <div className="relative">
           <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -147,6 +170,29 @@ export default function LoginPage() {
           'Войти'
         )}
       </button>
+
+      {/* Link to register */}
+      <p className="text-center text-sm text-gray-400">
+        Нет аккаунта?{' '}
+        <Link href="/register" className="text-sardoba-gold hover:text-sardoba-gold-light transition-colors">
+          Зарегистрироваться
+        </Link>
+      </p>
     </form>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div className="space-y-5">
+        <div>
+          <h2 className="text-xl font-semibold text-white mb-1">Вход в систему</h2>
+          <p className="text-sm text-gray-400">Загрузка...</p>
+        </div>
+      </div>
+    }>
+      <LoginForm />
+    </Suspense>
   );
 }

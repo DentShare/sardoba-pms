@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
 import { Payment, PaymentMethod } from '@/database/entities/payment.entity';
@@ -20,6 +20,7 @@ export class PaymentsService {
     private readonly paymentRepository: Repository<Payment>,
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
+    private readonly dataSource: DataSource,
     private readonly eventEmitter: EventEmitter2,
   ) {}
 
@@ -93,24 +94,28 @@ export class PaymentsService {
       );
     }
 
-    // Create payment
-    const payment = this.paymentRepository.create({
-      bookingId: booking.id,
-      amount: newAmount,
-      method: dto.method as PaymentMethod,
-      paidAt: dto.paid_at ? new Date(dto.paid_at) : new Date(),
-      notes: dto.notes ?? null,
-      reference: dto.reference ?? null,
-      createdBy: userId,
+    // Atomic: save payment + update booking balance in one transaction
+    const saved = await this.dataSource.transaction(async (manager) => {
+      const payment = manager.create(Payment, {
+        bookingId: booking.id,
+        amount: newAmount,
+        method: dto.method as PaymentMethod,
+        paidAt: dto.paid_at ? new Date(dto.paid_at) : new Date(),
+        notes: dto.notes ?? null,
+        reference: dto.reference ?? null,
+        createdBy: userId,
+      });
+
+      const savedPayment = await manager.save(payment);
+
+      await manager.update(Booking, booking.id, {
+        paidAmount: currentPaid + newAmount,
+      });
+
+      return savedPayment;
     });
 
-    const saved = await this.paymentRepository.save(payment);
-
-    // Update booking paidAmount
     const updatedPaid = currentPaid + newAmount;
-    await this.bookingRepository.update(booking.id, {
-      paidAmount: updatedPaid,
-    });
 
     this.logger.log(
       `Payment #${saved.id} created: ${newAmount} tiyin (${dto.method}) for booking #${booking.id}`,
@@ -140,7 +145,7 @@ export class PaymentsService {
    * Delete a payment. Updates the booking's paidAmount accordingly.
    * Only owner/admin should call this (enforced at the controller level).
    */
-  async remove(paymentId: number, userId: number) {
+  async remove(paymentId: number, userId: number, propertyId: number) {
     const payment = await this.paymentRepository.findOne({
       where: { id: paymentId },
       relations: ['booking'],
@@ -156,13 +161,22 @@ export class PaymentsService {
 
     const booking = payment.booking;
 
-    // Subtract payment amount from booking paidAmount
-    const updatedPaid = Number(booking.paidAmount) - Number(payment.amount);
-    await this.bookingRepository.update(booking.id, {
-      paidAmount: Math.max(0, updatedPaid),
-    });
+    if (payment.booking.propertyId !== propertyId) {
+      throw new SardobaException(
+        ErrorCode.FORBIDDEN,
+        { resource: 'payment', id: paymentId },
+        'Payment does not belong to your property',
+      );
+    }
 
-    await this.paymentRepository.remove(payment);
+    // Atomic: remove payment + update booking balance in one transaction
+    await this.dataSource.transaction(async (manager) => {
+      const updatedPaid = Number(booking.paidAmount) - Number(payment.amount);
+      await manager.update(Booking, booking.id, {
+        paidAmount: Math.max(0, updatedPaid),
+      });
+      await manager.remove(payment);
+    });
 
     this.logger.log(
       `Payment #${paymentId} deleted by user #${userId} for booking #${booking.id}`,
@@ -219,22 +233,26 @@ export class PaymentsService {
       return null;
     }
 
-    const payment = this.paymentRepository.create({
-      bookingId: booking.id,
-      amount,
-      method,
-      paidAt: new Date(),
-      notes: `Auto-created via ${method} webhook`,
-      reference,
-      createdBy: 0, // system
-    });
+    // Atomic: save payment + update booking balance in one transaction
+    const { saved, updatedPaid } = await this.dataSource.transaction(async (manager) => {
+      const payment = manager.create(Payment, {
+        bookingId: booking.id,
+        amount,
+        method,
+        paidAt: new Date(),
+        notes: `Auto-created via ${method} webhook`,
+        reference,
+        createdBy: 0, // system
+      });
 
-    const saved = await this.paymentRepository.save(payment);
+      const savedPayment = await manager.save(payment);
 
-    // Update booking paidAmount
-    const updatedPaid = currentPaid + amount;
-    await this.bookingRepository.update(booking.id, {
-      paidAmount: updatedPaid,
+      const newPaid = currentPaid + amount;
+      await manager.update(Booking, booking.id, {
+        paidAmount: newPaid,
+      });
+
+      return { saved: savedPayment, updatedPaid: newPaid };
     });
 
     this.logger.log(

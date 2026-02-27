@@ -6,6 +6,9 @@ import { Bot, GrammyError, HttpError } from 'grammy';
 import { NotificationSettings } from '@/database/entities/notification-settings.entity';
 import { Booking } from '@/database/entities/booking.entity';
 import { Room } from '@/database/entities/room.entity';
+import { CleaningTask } from '@/database/entities/cleaning-task.entity';
+import { RoomCleaningStatus } from '@/database/entities/room-cleaning-status.entity';
+import { CacheService } from '../../cache/cache.service';
 import { todayInTashkent } from '@sardoba/shared';
 
 /**
@@ -21,23 +24,23 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
   private bot: Bot | null = null;
   private readonly token: string;
 
-  /**
-   * In-memory map of one-time connection tokens.
-   * Key: token string, Value: { propertyId, expiresAt }
-   */
-  private readonly connectTokens = new Map<
-    string,
-    { propertyId: number; expiresAt: number }
-  >();
+  /** Cache key prefix for Telegram connection tokens */
+  private static readonly TOKEN_PREFIX = 'tg:connect:';
+  private static readonly TOKEN_TTL_SECONDS = 15 * 60; // 15 minutes
 
   constructor(
     private readonly configService: ConfigService,
+    private readonly cacheService: CacheService,
     @InjectRepository(NotificationSettings)
     private readonly settingsRepository: Repository<NotificationSettings>,
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
     @InjectRepository(Room)
     private readonly roomRepository: Repository<Room>,
+    @InjectRepository(CleaningTask)
+    private readonly taskRepository: Repository<CleaningTask>,
+    @InjectRepository(RoomCleaningStatus)
+    private readonly roomStatusRepository: Repository<RoomCleaningStatus>,
   ) {
     this.token = this.configService.get<string>('TELEGRAM_BOT_TOKEN', '');
   }
@@ -124,36 +127,28 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Store a one-time connection token for linking Telegram chat to a property.
-   * Token expires after 15 minutes.
+   * Token expires after 15 minutes. Stored in Redis via CacheService.
    */
-  storeConnectToken(token: string, propertyId: number): void {
-    const TTL_MS = 15 * 60 * 1000; // 15 minutes
-    this.connectTokens.set(token, {
-      propertyId,
-      expiresAt: Date.now() + TTL_MS,
-    });
-
-    // Schedule cleanup
-    setTimeout(() => {
-      this.connectTokens.delete(token);
-    }, TTL_MS);
+  async storeConnectToken(token: string, propertyId: number): Promise<void> {
+    await this.cacheService.set(
+      `${TelegramService.TOKEN_PREFIX}${token}`,
+      { propertyId },
+      TelegramService.TOKEN_TTL_SECONDS,
+    );
   }
 
   /**
    * Validate and consume a connection token. Returns propertyId if valid.
    */
-  consumeConnectToken(token: string): number | null {
-    const entry = this.connectTokens.get(token);
+  async consumeConnectToken(token: string): Promise<number | null> {
+    const key = `${TelegramService.TOKEN_PREFIX}${token}`;
+    const entry = await this.cacheService.get<{ propertyId: number }>(key);
     if (!entry) {
       return null;
     }
 
-    if (Date.now() > entry.expiresAt) {
-      this.connectTokens.delete(token);
-      return null;
-    }
-
-    this.connectTokens.delete(token);
+    // Delete token so it can only be used once
+    await this.cacheService.del(key);
     return entry.propertyId;
   }
 
@@ -174,7 +169,7 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      const propertyId = this.consumeConnectToken(token);
+      const propertyId = await this.consumeConnectToken(token);
       if (!propertyId) {
         await ctx.reply(
           'Токен недействителен или истёк.\nСгенерируйте новый в панели управления.',
@@ -364,6 +359,242 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
       );
     });
 
+    // /tasks — today's cleaning tasks summary
+    this.bot.command('tasks', async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const propertyId = await this.findPropertyByChatId(chatId);
+
+      if (!propertyId) {
+        await ctx.reply(
+          'Ваш чат не привязан к отелю.\nИспользуйте /start <token> для подключения.',
+        );
+        return;
+      }
+
+      const today = todayInTashkent();
+      const tasks = await this.taskRepository
+        .createQueryBuilder('task')
+        .leftJoinAndSelect('task.room', 'room')
+        .leftJoinAndSelect('task.assignee', 'assignee')
+        .where('task.propertyId = :propertyId', { propertyId })
+        .andWhere('task.createdAt >= :today', { today })
+        .getMany();
+
+      if (tasks.length === 0) {
+        await ctx.reply(
+          `<b>Задачи уборки на ${today}</b>\n\n<i>Нет задач на сегодня.</i>`,
+          { parse_mode: 'HTML' },
+        );
+        return;
+      }
+
+      const pending = tasks.filter((t) => t.taskStatus === 'pending' || t.taskStatus === 'assigned');
+      const inProgress = tasks.filter((t) => t.taskStatus === 'in_progress');
+      const completed = tasks.filter((t) => t.taskStatus === 'completed' || t.taskStatus === 'verified');
+
+      const lines: string[] = [
+        `<b>🧹 Задачи уборки на ${today}</b>`,
+        ``,
+        `<b>Итого:</b> ${tasks.length} | ⏳ ${pending.length} | 🔄 ${inProgress.length} | ✅ ${completed.length}`,
+      ];
+
+      if (pending.length > 0) {
+        lines.push(``, `<b>⏳ Ожидают (${pending.length}):</b>`);
+        for (const t of pending) {
+          const roomName = t.room?.name ?? `#${t.roomId}`;
+          const assignee = t.assignee ? ` → ${t.assignee.name}` : '';
+          lines.push(`  ${roomName}${assignee}`);
+        }
+      }
+
+      if (inProgress.length > 0) {
+        lines.push(``, `<b>🔄 В процессе (${inProgress.length}):</b>`);
+        for (const t of inProgress) {
+          const roomName = t.room?.name ?? `#${t.roomId}`;
+          const assignee = t.assignee ? ` — ${t.assignee.name}` : '';
+          lines.push(`  ${roomName}${assignee}`);
+        }
+      }
+
+      if (completed.length > 0) {
+        lines.push(``, `<b>✅ Завершены (${completed.length}):</b>`);
+        for (const t of completed) {
+          const roomName = t.room?.name ?? `#${t.roomId}`;
+          const assignee = t.assignee ? ` — ${t.assignee.name}` : '';
+          lines.push(`  ${roomName}${assignee}`);
+        }
+      }
+
+      await ctx.reply(lines.join('\n'), { parse_mode: 'HTML' });
+    });
+
+    // /room {number} — room cleaning status
+    this.bot.command('room', async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const roomName = ctx.match?.trim();
+
+      if (!roomName) {
+        await ctx.reply('Укажите номер комнаты.\nПример: /room 101');
+        return;
+      }
+
+      const propertyId = await this.findPropertyByChatId(chatId);
+      if (!propertyId) {
+        await ctx.reply(
+          'Ваш чат не привязан к отелю.\nИспользуйте /start <token> для подключения.',
+        );
+        return;
+      }
+
+      const room = await this.roomRepository.findOne({
+        where: { propertyId, name: roomName },
+      });
+
+      if (!room) {
+        await ctx.reply(`Номер «${roomName}» не найден.`);
+        return;
+      }
+
+      const roomStatus = await this.roomStatusRepository.findOne({
+        where: { propertyId, roomId: room.id },
+      });
+
+      const activeTask = await this.taskRepository.findOne({
+        where: { propertyId, roomId: room.id },
+        relations: ['assignee'],
+        order: { createdAt: 'DESC' },
+      });
+
+      const statusLabels: Record<string, string> = {
+        clean: '✅ Чисто',
+        dirty: '❌ Грязно',
+        cleaning: '🧹 Уборка',
+        inspection: '🔍 Проверка',
+        do_not_disturb: '🔕 Не беспокоить',
+        out_of_order: '🚫 Не в работе',
+      };
+
+      const cleaningStatus = roomStatus?.cleaningStatus ?? 'clean';
+      const statusLabel = statusLabels[cleaningStatus] ?? cleaningStatus;
+
+      const lines: string[] = [
+        `<b>🚪 Номер ${room.name}</b>`,
+        ``,
+        `<b>Тип:</b> ${room.roomType}`,
+        `<b>Этаж:</b> ${room.floor ?? '—'}`,
+        `<b>Статус уборки:</b> ${statusLabel}`,
+      ];
+
+      if (roomStatus?.lastCleanedAt) {
+        const cleanedAt = new Date(roomStatus.lastCleanedAt).toLocaleString('ru-RU', {
+          timeZone: 'Asia/Tashkent',
+          day: '2-digit',
+          month: '2-digit',
+          hour: '2-digit',
+          minute: '2-digit',
+        });
+        lines.push(`<b>Последняя уборка:</b> ${cleanedAt}`);
+      }
+
+      if (activeTask && activeTask.taskStatus !== 'completed' && activeTask.taskStatus !== 'verified') {
+        lines.push(
+          ``,
+          `<b>Активная задача:</b>`,
+          `  Статус: ${activeTask.taskStatus}`,
+          `  Тип: ${activeTask.taskType}`,
+        );
+        if (activeTask.assignee) {
+          lines.push(`  Горничная: ${activeTask.assignee.name}`);
+        }
+      }
+
+      await ctx.reply(lines.join('\n'), { parse_mode: 'HTML' });
+    });
+
+    // /done {room_number} — mark room cleaning as completed
+    this.bot.command('done', async (ctx) => {
+      const chatId = String(ctx.chat.id);
+      const roomName = ctx.match?.trim();
+
+      if (!roomName) {
+        await ctx.reply('Укажите номер комнаты.\nПример: /done 101');
+        return;
+      }
+
+      const propertyId = await this.findPropertyByChatId(chatId);
+      if (!propertyId) {
+        await ctx.reply(
+          'Ваш чат не привязан к отелю.\nИспользуйте /start <token> для подключения.',
+        );
+        return;
+      }
+
+      const room = await this.roomRepository.findOne({
+        where: { propertyId, name: roomName },
+      });
+
+      if (!room) {
+        await ctx.reply(`Номер «${roomName}» не найден.`);
+        return;
+      }
+
+      const activeTask = await this.taskRepository.findOne({
+        where: {
+          propertyId,
+          roomId: room.id,
+        },
+        relations: ['assignee'],
+        order: { createdAt: 'DESC' },
+      });
+
+      if (!activeTask || activeTask.taskStatus === 'completed' || activeTask.taskStatus === 'verified') {
+        await ctx.reply(`Нет активной задачи уборки для номера ${roomName}.`);
+        return;
+      }
+
+      activeTask.taskStatus = 'completed';
+      activeTask.completedAt = new Date();
+      activeTask.cleaningStatus = 'clean';
+
+      if (activeTask.startedAt) {
+        const diffMs = activeTask.completedAt.getTime() - activeTask.startedAt.getTime();
+        activeTask.durationMinutes = Math.round(diffMs / 60000);
+      }
+
+      await this.taskRepository.save(activeTask);
+
+      let roomStatus = await this.roomStatusRepository.findOne({
+        where: { propertyId, roomId: room.id },
+      });
+
+      if (!roomStatus) {
+        roomStatus = this.roomStatusRepository.create({
+          propertyId,
+          roomId: room.id,
+          cleaningStatus: 'clean' as RoomCleaningStatus['cleaningStatus'],
+        });
+      } else {
+        roomStatus.cleaningStatus = 'clean' as RoomCleaningStatus['cleaningStatus'];
+      }
+      roomStatus.lastCleanedAt = new Date();
+      await this.roomStatusRepository.save(roomStatus);
+
+      const durationText = activeTask.durationMinutes
+        ? ` за ${activeTask.durationMinutes} мин`
+        : '';
+      const assigneeText = activeTask.assignee
+        ? `\n<b>Горничная:</b> ${activeTask.assignee.name}`
+        : '';
+
+      await ctx.reply(
+        `<b>✅ Уборка завершена</b>\n\n` +
+          `<b>Номер:</b> ${room.name}${durationText}` +
+          assigneeText +
+          `\n\n<i>Статус номера обновлён: Чисто</i>`,
+        { parse_mode: 'HTML' },
+      );
+    });
+
     // Handle errors
     this.bot.catch((err) => {
       this.logger.error('Telegram bot error:', err.error);
@@ -397,21 +628,18 @@ export class TelegramService implements OnModuleInit, OnModuleDestroy {
 
   /**
    * Find the property ID for a given Telegram chat ID.
+   * Uses JSONB containment query instead of loading all settings.
    */
   private async findPropertyByChatId(
     chatId: string,
   ): Promise<number | null> {
-    const allSettings = await this.settingsRepository.find();
+    const settings = await this.settingsRepository
+      .createQueryBuilder('s')
+      .where(`s.telegram_recipients @> :filter::jsonb`, {
+        filter: JSON.stringify([{ chatId }]),
+      })
+      .getOne();
 
-    for (const settings of allSettings) {
-      const recipient = settings.telegramRecipients.find(
-        (r) => r.chatId === chatId && r.isActive,
-      );
-      if (recipient) {
-        return settings.propertyId;
-      }
-    }
-
-    return null;
+    return settings?.propertyId ?? null;
   }
 }

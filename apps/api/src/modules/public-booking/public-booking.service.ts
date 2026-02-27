@@ -1,15 +1,19 @@
 import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { differenceInCalendarDays, parseISO } from 'date-fns';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { createHash } from 'crypto';
+import { Request } from 'express';
 import { Property } from '@/database/entities/property.entity';
 import { PropertyExtra } from '@/database/entities/property-extra.entity';
 import { BookingExtra } from '@/database/entities/booking-extra.entity';
 import { Booking, BookingStatus } from '@/database/entities/booking.entity';
 import { Guest } from '@/database/entities/guest.entity';
 import { Room } from '@/database/entities/room.entity';
+import { WidgetEvent } from '@/database/entities/widget-event.entity';
 import { AvailabilityService } from '../bookings/availability.service';
 import { BookingNumberService } from '../bookings/booking-number.service';
 import { RatesService } from '../rates/rates.service';
@@ -25,6 +29,7 @@ export class PublicBookingService {
   private readonly logger = new Logger(PublicBookingService.name);
 
   constructor(
+    private readonly configService: ConfigService,
     @InjectRepository(Property)
     private readonly propertyRepository: Repository<Property>,
     @InjectRepository(PropertyExtra)
@@ -35,6 +40,8 @@ export class PublicBookingService {
     private readonly bookingRepository: Repository<Booking>,
     @InjectRepository(Guest)
     private readonly guestRepository: Repository<Guest>,
+    @InjectRepository(WidgetEvent)
+    private readonly widgetEventRepository: Repository<WidgetEvent>,
     private readonly availabilityService: AvailabilityService,
     private readonly bookingNumberService: BookingNumberService,
     private readonly ratesService: RatesService,
@@ -506,6 +513,7 @@ export class PublicBookingService {
 
     // Return confirmation
     return {
+      booking_id: savedBooking.id,
       booking_number: savedBooking.bookingNumber,
       property_name: property.name,
       room_name: room.name,
@@ -546,6 +554,7 @@ export class PublicBookingService {
       where: {
         bookingNumber,
         propertyId: property.id,
+        source: 'website',
       },
       relations: ['room', 'guest', 'extras', 'extras.propertyExtra'],
     });
@@ -559,6 +568,7 @@ export class PublicBookingService {
     }
 
     return {
+      booking_id: booking.id,
       booking_number: booking.bookingNumber,
       status: booking.status,
       property: {
@@ -588,6 +598,7 @@ export class PublicBookingService {
       adults: booking.adults,
       children: booking.children,
       total_amount: Number(booking.totalAmount),
+      paid_amount: Number(booking.paidAmount),
       currency: property.currency,
       extras: (booking.extras ?? []).map((be) => ({
         name: be.propertyExtra?.name ?? 'Unknown',
@@ -598,6 +609,138 @@ export class PublicBookingService {
       notes: booking.notes,
       created_at: booking.createdAt,
     };
+  }
+
+  // ── getPaymentInfo ─────────────────────────────────────────────────────────
+
+  /**
+   * Returns available payment methods and redirect URLs for online payment.
+   * Generates Payme checkout URL and Click payment URL based on config.
+   */
+  async getPaymentInfo(slug: string, bookingNumber: string) {
+    const property = await this.findPropertyBySlug(slug);
+
+    const booking = await this.bookingRepository.findOne({
+      where: {
+        bookingNumber,
+        propertyId: property.id,
+      },
+    });
+
+    if (!booking) {
+      throw new SardobaException(
+        ErrorCode.NOT_FOUND,
+        { resource: 'booking', booking_number: bookingNumber },
+        'Booking not found',
+      );
+    }
+
+    const totalAmount = Number(booking.totalAmount);
+    const paidAmount = Number(booking.paidAmount);
+    const balance = totalAmount - paidAmount;
+
+    // Amount in som (for Click) and tiyin (for Payme)
+    const amountSom = balance / 100;
+    const amountTiyin = balance;
+
+    const onlinePaymentsEnabled =
+      this.configService.get<boolean>('FEATURE_ONLINE_PAYMENTS', true);
+
+    const methods: Array<{
+      id: string;
+      name: string;
+      url: string | null;
+      enabled: boolean;
+    }> = [];
+
+    // Payme
+    const paymeMerchantId = this.configService.get<string>('PAYME_MERCHANT_ID', '');
+    const paymeCheckoutUrl = this.configService.get<string>(
+      'PAYME_CHECKOUT_URL',
+      'https://checkout.paycom.uz',
+    );
+    const paymeEnabled = onlinePaymentsEnabled && !!paymeMerchantId;
+
+    if (paymeEnabled && balance > 0) {
+      // Payme checkout URL format:
+      // https://checkout.paycom.uz/<base64-encoded-params>
+      // Params: m=merchantId;ac.booking_id=bookingId;a=amountInTiyin
+      const paymeParams = Buffer.from(
+        `m=${paymeMerchantId};ac.booking_id=${booking.id};a=${amountTiyin}`,
+      ).toString('base64');
+
+      methods.push({
+        id: 'payme',
+        name: 'Payme',
+        url: `${paymeCheckoutUrl}/${paymeParams}`,
+        enabled: true,
+      });
+    }
+
+    // Click
+    const clickMerchantId = this.configService.get<string>('CLICK_MERCHANT_ID', '');
+    const clickServiceId = this.configService.get<string>('CLICK_SERVICE_ID', '');
+    const clickEnabled = onlinePaymentsEnabled && !!clickMerchantId && !!clickServiceId;
+
+    if (clickEnabled && balance > 0) {
+      // Click payment URL format:
+      // https://my.click.uz/services/pay?service_id=X&merchant_id=Y&amount=Z&transaction_param=bookingId
+      const frontendUrl = this.configService.get<string>(
+        'FRONTEND_URL',
+        'http://localhost:3002',
+      );
+      const returnUrl = `${frontendUrl}/book/${slug}/confirmation/${bookingNumber}`;
+
+      methods.push({
+        id: 'click',
+        name: 'Click',
+        url:
+          `https://my.click.uz/services/pay` +
+          `?service_id=${clickServiceId}` +
+          `&merchant_id=${clickMerchantId}` +
+          `&amount=${amountSom}` +
+          `&transaction_param=${booking.id}` +
+          `&return_url=${encodeURIComponent(returnUrl)}`,
+        enabled: true,
+      });
+    }
+
+    return {
+      booking_id: booking.id,
+      booking_number: booking.bookingNumber,
+      total_amount: totalAmount,
+      paid_amount: paidAmount,
+      balance,
+      currency: property.currency,
+      fully_paid: balance <= 0,
+      methods,
+    };
+  }
+
+  // ── trackWidgetEvent ────────────────────────────────────────────────────────
+
+  async trackWidgetEvent(
+    slug: string,
+    eventType: string,
+    meta: Record<string, unknown>,
+    req: Request,
+  ) {
+    const property = await this.findPropertyBySlug(slug);
+
+    const ip =
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.ip ||
+      '';
+    const ipHash = createHash('sha256').update(ip).digest('hex').slice(0, 16);
+
+    const event = this.widgetEventRepository.create({
+      propertyId: property.id,
+      eventType,
+      meta,
+      ipHash,
+      roomId: null,
+    });
+    await this.widgetEventRepository.save(event);
   }
 
   // ── Private helpers ─────────────────────────────────────────────────────────

@@ -4,6 +4,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createHash } from 'crypto';
 import { Booking } from '@/database/entities/booking.entity';
+import { ClickTransaction } from '@/database/entities/click-transaction.entity';
 import { PaymentsService } from './payments.service';
 
 /**
@@ -55,19 +56,6 @@ interface ClickCompleteBody {
   sign_string: string;
 }
 
-/**
- * In-memory store for Click prepare records.
- * In production, use a database table (click_transactions).
- */
-interface ClickPrepareRecord {
-  clickTransId: number;
-  bookingId: number;
-  amount: number; // in tiyin
-  prepareId: number;
-  completed: boolean;
-  cancelled: boolean;
-}
-
 @Injectable()
 export class ClickService {
   private readonly logger = new Logger(ClickService.name);
@@ -75,14 +63,13 @@ export class ClickService {
   private readonly serviceId: string;
   private readonly secretKey: string;
 
-  private nextPrepareId = 1;
-  private readonly prepareRecords = new Map<number, ClickPrepareRecord>();
-
   constructor(
     private readonly configService: ConfigService,
     private readonly paymentsService: PaymentsService,
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
+    @InjectRepository(ClickTransaction)
+    private readonly transactionRepo: Repository<ClickTransaction>,
   ) {
     this.merchantId = this.configService.get<string>('CLICK_MERCHANT_ID', '');
     this.serviceId = this.configService.get<string>('CLICK_SERVICE_ID', '');
@@ -216,17 +203,17 @@ export class ClickService {
       );
     }
 
-    // Create prepare record
-    const prepareId = this.nextPrepareId++;
-    const record: ClickPrepareRecord = {
+    // Create transaction record in DB; auto-increment id serves as merchant_prepare_id
+    const transaction = this.transactionRepo.create({
       clickTransId: click_trans_id,
       bookingId,
       amount: amountTiyin,
-      prepareId,
-      completed: false,
-      cancelled: false,
-    };
-    this.prepareRecords.set(prepareId, record);
+      state: 'prepared',
+      error: null,
+    });
+
+    const saved = await this.transactionRepo.save(transaction);
+    const prepareId = saved.id;
 
     this.logger.log(
       `Click Prepare: trans_id=${click_trans_id}, booking=#${bookingId}, amount=${amountTiyin} tiyin, prepareId=${prepareId}`,
@@ -299,8 +286,10 @@ export class ClickService {
       );
     }
 
-    // Find prepare record
-    const record = this.prepareRecords.get(merchant_prepare_id);
+    // Find transaction record by id (merchant_prepare_id)
+    const record = await this.transactionRepo.findOne({
+      where: { id: merchant_prepare_id },
+    });
     if (!record) {
       return this.clickResponse(
         click_trans_id,
@@ -311,7 +300,7 @@ export class ClickService {
       );
     }
 
-    if (record.completed) {
+    if (record.state === 'completed') {
       return this.clickResponse(
         click_trans_id,
         merchant_trans_id,
@@ -321,7 +310,7 @@ export class ClickService {
       );
     }
 
-    if (record.cancelled) {
+    if (record.state === 'cancelled') {
       return this.clickResponse(
         click_trans_id,
         merchant_trans_id,
@@ -333,8 +322,9 @@ export class ClickService {
 
     // If Click reports an error (user cancelled, etc.)
     if (reqError < 0) {
-      record.cancelled = true;
-      this.prepareRecords.set(merchant_prepare_id, record);
+      record.state = 'cancelled';
+      record.error = reqError;
+      await this.transactionRepo.save(record);
 
       this.logger.log(
         `Click Complete cancelled by Click: trans_id=${click_trans_id}, error=${reqError}`,
@@ -352,7 +342,7 @@ export class ClickService {
     // Create actual payment
     const payment = await this.paymentsService.createFromWebhook(
       record.bookingId,
-      record.amount,
+      Number(record.amount),
       'click',
       `click:${click_trans_id}`,
     );
@@ -370,8 +360,8 @@ export class ClickService {
       );
     }
 
-    record.completed = true;
-    this.prepareRecords.set(merchant_prepare_id, record);
+    record.state = 'completed';
+    await this.transactionRepo.save(record);
 
     this.logger.log(
       `Click Complete: trans_id=${click_trans_id}, payment=#${payment.id}, booking=#${record.bookingId}`,

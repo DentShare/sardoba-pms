@@ -4,13 +4,12 @@ import {
   IsString,
   MinLength,
   MaxLength,
+  IsOptional,
   IsInt,
   Min,
-  IsIn,
   Matches,
 } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
-import { UserRole } from '../../../database/entities/user.entity';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class RegisterDto {
   @ApiProperty({ example: 'Alisher Karimov', description: 'Full name of the user' })
@@ -23,6 +22,14 @@ export class RegisterDto {
   @IsEmail()
   @IsNotEmpty()
   email!: string;
+
+  @ApiPropertyOptional({ example: '+998901234567', description: 'Phone number (+998...)' })
+  @IsOptional()
+  @IsString()
+  @Matches(/^\+998\d{9}$/, {
+    message: 'Phone must be in format +998XXXXXXXXX',
+  })
+  phone?: string;
 
   @ApiProperty({
     example: 'P@ssw0rd!',
@@ -37,17 +44,16 @@ export class RegisterDto {
   })
   password!: string;
 
-  @ApiProperty({ example: 1, description: 'Property ID the user belongs to' })
+  @ApiPropertyOptional({ example: 'Sardoba Hotel', description: 'Property name (for self-registration)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  property_name?: string;
+
+  @ApiPropertyOptional({ example: 1, description: 'Property ID the user belongs to (for admin-created users)' })
+  @IsOptional()
   @IsInt()
   @Min(1)
-  property_id!: number;
+  property_id?: number;
 
-  @ApiProperty({
-    example: 'admin',
-    description: 'User role',
-    enum: ['owner', 'admin', 'viewer'],
-  })
-  @IsString()
-  @IsIn(['owner', 'admin', 'viewer'])
-  role!: UserRole;
 }

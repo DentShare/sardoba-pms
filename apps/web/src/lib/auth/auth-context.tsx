@@ -21,6 +21,20 @@ export interface AuthContextValue {
 
 export const AuthContext = createContext<AuthContextValue | null>(null);
 
+/** Map API response to User type (interceptor handles snake→camel) */
+function mapUser(raw: Record<string, unknown>): User {
+  return {
+    id: raw.id as number,
+    propertyId: (raw.propertyId ?? raw.property_id) as number,
+    name: raw.name as string,
+    email: (raw.email ?? '') as string,
+    role: raw.role as User['role'],
+    isActive: (raw.isActive ?? raw.is_active ?? true) as boolean,
+    lastLoginAt: raw.lastLoginAt ? new Date(raw.lastLoginAt as string) : undefined,
+    createdAt: raw.createdAt ? new Date(raw.createdAt as string) : new Date(),
+  };
+}
+
 interface AuthProviderProps {
   children: ReactNode;
 }
@@ -38,9 +52,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     api
-      .get<User>('/auth/me')
+      .get('/auth/me')
       .then(({ data }) => {
-        setUser(data);
+        setUser(mapUser(data as Record<string, unknown>));
       })
       .catch(() => {
         // Token is invalid, clear auth state
@@ -55,20 +69,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    const { data } = await api.post<{
-      access_token: string;
-      refresh_token: string;
-      expires_in: number;
-      user: User;
-    }>('/auth/login', { email, password });
+    const { data } = await api.post<Record<string, unknown>>('/auth/login', { email, password });
 
-    localStorage.setItem('access_token', data.access_token);
-    localStorage.setItem('refresh_token', data.refresh_token);
+    // Global interceptor converts snake_case → camelCase, so use camelCase keys
+    const raw = data as Record<string, unknown>;
+    const accessToken = (raw.accessToken ?? raw.access_token) as string;
+    const refreshToken = (raw.refreshToken ?? raw.refresh_token) as string;
+    const expiresIn = (raw.expiresIn ?? raw.expires_in ?? 86400) as number;
+
+    localStorage.setItem('access_token', accessToken);
+    localStorage.setItem('refresh_token', refreshToken);
 
     // Set cookie for middleware
-    document.cookie = `access_token=${data.access_token}; path=/; max-age=${data.expires_in}; SameSite=Lax`;
+    document.cookie = `access_token=${accessToken}; path=/; max-age=${expiresIn}; SameSite=Strict; Secure`;
 
-    setUser(data.user);
+    setUser(mapUser(raw.user as Record<string, unknown>));
   }, []);
 
   const logout = useCallback(() => {

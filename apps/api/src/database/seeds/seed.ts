@@ -1,4 +1,5 @@
 import 'dotenv/config';
+import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
 import { Property } from '../entities/property.entity';
 import { User } from '../entities/user.entity';
@@ -9,6 +10,7 @@ import { Booking } from '../entities/booking.entity';
 import { Payment } from '../entities/payment.entity';
 import { BookingHistory } from '../entities/booking-history.entity';
 import { NotificationSettings } from '../entities/notification-settings.entity';
+import { PropertyExtra } from '../entities/property-extra.entity';
 import * as crypto from 'crypto';
 
 /**
@@ -25,9 +27,8 @@ const dataSource = new DataSource({
   synchronize: false,
 });
 
-function hashPassword(password: string): string {
-  // Simple bcrypt-compatible placeholder; real app uses bcryptjs
-  return crypto.createHash('sha256').update(password).digest('hex');
+async function hashPassword(password: string): Promise<string> {
+  return bcrypt.hash(password, 12);
 }
 
 function bookingNumber(year: number, seq: number): string {
@@ -61,6 +62,12 @@ async function seed(): Promise<void> {
       checkinTime: '14:00',
       checkoutTime: '12:00',
       settings: { theme: 'default' },
+      slug: 'sardoba-guest-house',
+      description: 'Уютный гостевой дом в самом сердце Самарканда, в 5 минутах ходьбы от площади Регистан. Современные номера, восточное гостеприимство и незабываемая атмосфера древнего города.',
+      descriptionUz: 'Samarqand markazida, Registon maydonidan 5 daqiqalik masofada joylashgan qulay mehmonxona.',
+      coverPhoto: null,
+      photos: [],
+      bookingEnabled: true,
     });
     console.log(`  Property created: ${property.name} (id=${property.id})`);
 
@@ -70,7 +77,7 @@ async function seed(): Promise<void> {
       propertyId: property.id,
       name: 'Admin Sardoba',
       email: 'admin@sardoba.uz',
-      passwordHash: hashPassword('admin123'),
+      passwordHash: await hashPassword('Admin123!'),
       role: 'owner' as const,
       isActive: true,
     });
@@ -79,7 +86,7 @@ async function seed(): Promise<void> {
       propertyId: property.id,
       name: 'Reception',
       email: 'reception@sardoba.uz',
-      passwordHash: hashPassword('reception123'),
+      passwordHash: await hashPassword('Reception123!'),
       role: 'viewer' as const,
       isActive: true,
     });
@@ -190,7 +197,7 @@ async function seed(): Promise<void> {
         propertyId: property.id,
         name: 'Standard Rate',
         type: 'base' as const,
-        price: null,
+        price: 0,
         discountPercent: null,
         dateFrom: null,
         dateTo: null,
@@ -371,6 +378,56 @@ async function seed(): Promise<void> {
       eventSyncError: true,
     });
     console.log('  Notification settings created');
+
+    // ── 10. Property Extras (additional services) ────────────────────────────
+    const extrasRepo = dataSource.getRepository(PropertyExtra);
+    await extrasRepo.save([
+      {
+        propertyId: property.id,
+        name: 'Завтрак',
+        nameUz: 'Nonushta',
+        description: 'Шведский стол: каши, выпечка, фрукты, чай/кофе',
+        price: 5000000, // 50,000 UZS
+        priceType: 'per_person' as const,
+        icon: 'coffee',
+        isActive: true,
+        sortOrder: 1,
+      },
+      {
+        propertyId: property.id,
+        name: 'Трансфер из аэропорта',
+        nameUz: 'Aeroportdan transport',
+        description: 'Встреча в аэропорту Самарканда с табличкой',
+        price: 15000000, // 150,000 UZS
+        priceType: 'per_booking' as const,
+        icon: 'car',
+        isActive: true,
+        sortOrder: 2,
+      },
+      {
+        propertyId: property.id,
+        name: 'Поздний выезд (до 16:00)',
+        nameUz: 'Kechki chiqish',
+        description: 'Продление выезда с 12:00 до 16:00',
+        price: 10000000, // 100,000 UZS
+        priceType: 'per_booking' as const,
+        icon: 'clock',
+        isActive: true,
+        sortOrder: 3,
+      },
+      {
+        propertyId: property.id,
+        name: 'Экскурсия по Самарканду',
+        nameUz: 'Samarqand ekskursiyasi',
+        description: 'Полнодневная экскурсия с гидом: Регистан, Шахи-Зинда, Биби-Ханум',
+        price: 25000000, // 250,000 UZS
+        priceType: 'per_person' as const,
+        icon: 'map',
+        isActive: true,
+        sortOrder: 4,
+      },
+    ]);
+    console.log('  Property extras created: 4');
 
     await queryRunner.commitTransaction();
     console.log('\nSeed completed successfully!');

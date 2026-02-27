@@ -1,9 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource, Between } from 'typeorm';
+import { timingSafeEqual } from 'crypto';
 import { Booking } from '@/database/entities/booking.entity';
 import { Payment } from '@/database/entities/payment.entity';
+import { PaymeTransaction } from '@/database/entities/payme-transaction.entity';
 import { PaymentsService } from './payments.service';
 
 /**
@@ -24,24 +26,6 @@ enum PaymeError {
 }
 
 /**
- * Payme transaction states:
- *   1 = created (waiting for payment)
- *   2 = completed (payment performed)
- *  -1 = cancelled after creation
- *  -2 = cancelled after completion
- */
-interface PaymeTransaction {
-  id: string;
-  bookingId: number;
-  amount: number;
-  state: 1 | 2 | -1 | -2;
-  createTime: number;
-  performTime: number;
-  cancelTime: number;
-  reason: number | null;
-}
-
-/**
  * Payme JSON-RPC request body.
  */
 interface PaymeRequest {
@@ -56,13 +40,6 @@ export class PaymeService {
   private readonly merchantId: string;
   private readonly secretKey: string;
 
-  /**
-   * In-memory storage for Payme transactions.
-   * In production, this should be a database table (payme_transactions).
-   * For now, using a Map to keep the implementation simple and functional.
-   */
-  private readonly transactions = new Map<string, PaymeTransaction>();
-
   constructor(
     private readonly configService: ConfigService,
     private readonly paymentsService: PaymentsService,
@@ -70,6 +47,9 @@ export class PaymeService {
     private readonly bookingRepository: Repository<Booking>,
     @InjectRepository(Payment)
     private readonly paymentRepository: Repository<Payment>,
+    @InjectRepository(PaymeTransaction)
+    private readonly transactionRepo: Repository<PaymeTransaction>,
+    private readonly dataSource: DataSource,
   ) {
     this.merchantId = this.configService.get<string>('PAYME_MERCHANT_ID', '');
     this.secretKey = this.configService.get<string>('PAYME_SECRET_KEY', '');
@@ -186,13 +166,15 @@ export class PaymeService {
     const time = params.time;
 
     // Check if transaction already exists
-    const existing = this.transactions.get(transactionId);
+    const existing = await this.transactionRepo.findOne({
+      where: { transactionId },
+    });
     if (existing) {
       if (existing.state === 1) {
         // Return existing transaction
         return this.successResponse(requestId, {
-          create_time: existing.createTime,
-          transaction: existing.id,
+          create_time: Number(existing.createTime),
+          transaction: existing.transactionId,
           state: existing.state,
         });
       }
@@ -237,27 +219,27 @@ export class PaymeService {
       return this.errorResponse(requestId, PaymeError.INVALID_AMOUNT, 'Invalid amount');
     }
 
-    // Create transaction record
-    const transaction: PaymeTransaction = {
-      id: transactionId,
+    // Create transaction record in DB
+    const transaction = this.transactionRepo.create({
+      transactionId,
       bookingId,
       amount,
       state: 1,
       createTime: time || Date.now(),
-      performTime: 0,
-      cancelTime: 0,
-      reason: null,
-    };
+      performTime: null,
+      cancelTime: null,
+      cancelReason: null,
+    });
 
-    this.transactions.set(transactionId, transaction);
+    await this.transactionRepo.save(transaction);
 
     this.logger.log(
       `Payme CreateTransaction: txn=${transactionId}, booking=#${bookingId}, amount=${amount}`,
     );
 
     return this.successResponse(requestId, {
-      create_time: transaction.createTime,
-      transaction: transaction.id,
+      create_time: Number(transaction.createTime),
+      transaction: transaction.transactionId,
       state: transaction.state,
     });
   }
@@ -274,7 +256,9 @@ export class PaymeService {
   ): Promise<Record<string, unknown>> {
     const transactionId = params.id;
 
-    const transaction = this.transactions.get(transactionId);
+    const transaction = await this.transactionRepo.findOne({
+      where: { transactionId },
+    });
     if (!transaction) {
       return this.errorResponse(
         requestId,
@@ -286,8 +270,8 @@ export class PaymeService {
     if (transaction.state === 2) {
       // Already performed - return success (idempotent)
       return this.successResponse(requestId, {
-        transaction: transaction.id,
-        perform_time: transaction.performTime,
+        transaction: transaction.transactionId,
+        perform_time: Number(transaction.performTime),
         state: transaction.state,
       });
     }
@@ -303,7 +287,7 @@ export class PaymeService {
     // Create the actual Payment record
     const payment = await this.paymentsService.createFromWebhook(
       transaction.bookingId,
-      transaction.amount,
+      Number(transaction.amount),
       'payme',
       `payme:${transactionId}`,
     );
@@ -317,17 +301,18 @@ export class PaymeService {
     }
 
     // Update transaction state
+    const performTime = Date.now();
     transaction.state = 2;
-    transaction.performTime = Date.now();
-    this.transactions.set(transactionId, transaction);
+    transaction.performTime = performTime;
+    await this.transactionRepo.save(transaction);
 
     this.logger.log(
       `Payme PerformTransaction: txn=${transactionId}, payment=#${payment.id}`,
     );
 
     return this.successResponse(requestId, {
-      transaction: transaction.id,
-      perform_time: transaction.performTime,
+      transaction: transaction.transactionId,
+      perform_time: performTime,
       state: transaction.state,
     });
   }
@@ -346,7 +331,9 @@ export class PaymeService {
     const transactionId = params.id;
     const reason = params.reason;
 
-    const transaction = this.transactions.get(transactionId);
+    const transaction = await this.transactionRepo.findOne({
+      where: { transactionId },
+    });
     if (!transaction) {
       return this.errorResponse(
         requestId,
@@ -358,8 +345,8 @@ export class PaymeService {
     // Already cancelled
     if (transaction.state === -1 || transaction.state === -2) {
       return this.successResponse(requestId, {
-        transaction: transaction.id,
-        cancel_time: transaction.cancelTime,
+        transaction: transaction.transactionId,
+        cancel_time: Number(transaction.cancelTime),
         state: transaction.state,
       });
     }
@@ -371,20 +358,21 @@ export class PaymeService {
       // Cancel after perform — refund: reverse the payment
       transaction.state = -2;
 
-      await this.refundPayment(transactionId, transaction.bookingId, transaction.amount);
+      await this.refundPayment(transactionId, transaction.bookingId, Number(transaction.amount));
     }
 
-    transaction.cancelTime = Date.now();
-    transaction.reason = reason ?? null;
-    this.transactions.set(transactionId, transaction);
+    const cancelTime = Date.now();
+    transaction.cancelTime = cancelTime;
+    transaction.cancelReason = reason ?? null;
+    await this.transactionRepo.save(transaction);
 
     this.logger.log(
       `Payme CancelTransaction: txn=${transactionId}, state=${transaction.state}, reason=${reason}`,
     );
 
     return this.successResponse(requestId, {
-      transaction: transaction.id,
-      cancel_time: transaction.cancelTime,
+      transaction: transaction.transactionId,
+      cancel_time: cancelTime,
       state: transaction.state,
     });
   }
@@ -394,13 +382,15 @@ export class PaymeService {
   /**
    * Returns the current state of a transaction.
    */
-  private checkTransaction(
+  private async checkTransaction(
     requestId: number,
     params: Record<string, any>,
-  ): Record<string, unknown> {
+  ): Promise<Record<string, unknown>> {
     const transactionId = params.id;
 
-    const transaction = this.transactions.get(transactionId);
+    const transaction = await this.transactionRepo.findOne({
+      where: { transactionId },
+    });
     if (!transaction) {
       return this.errorResponse(
         requestId,
@@ -410,12 +400,12 @@ export class PaymeService {
     }
 
     return this.successResponse(requestId, {
-      create_time: transaction.createTime,
-      perform_time: transaction.performTime,
-      cancel_time: transaction.cancelTime,
-      transaction: transaction.id,
+      create_time: Number(transaction.createTime),
+      perform_time: Number(transaction.performTime ?? 0),
+      cancel_time: Number(transaction.cancelTime ?? 0),
+      transaction: transaction.transactionId,
       state: transaction.state,
-      reason: transaction.reason,
+      reason: transaction.cancelReason,
     });
   }
 
@@ -424,30 +414,31 @@ export class PaymeService {
   /**
    * Returns a list of transactions for a given time range.
    */
-  private getStatement(
+  private async getStatement(
     requestId: number,
     params: Record<string, any>,
-  ): Record<string, unknown> {
+  ): Promise<Record<string, unknown>> {
     const from = params.from;
     const to = params.to;
 
-    const transactions: Record<string, unknown>[] = [];
-    for (const txn of this.transactions.values()) {
-      if (txn.createTime >= from && txn.createTime <= to) {
-        transactions.push({
-          id: txn.id,
-          time: txn.createTime,
-          amount: txn.amount,
-          account: { booking_id: txn.bookingId },
-          create_time: txn.createTime,
-          perform_time: txn.performTime,
-          cancel_time: txn.cancelTime,
-          transaction: txn.id,
-          state: txn.state,
-          reason: txn.reason,
-        });
-      }
-    }
+    const dbTransactions = await this.transactionRepo.find({
+      where: {
+        createTime: Between(from, to),
+      },
+    });
+
+    const transactions: Record<string, unknown>[] = dbTransactions.map((txn) => ({
+      id: txn.transactionId,
+      time: Number(txn.createTime),
+      amount: Number(txn.amount),
+      account: { booking_id: txn.bookingId },
+      create_time: Number(txn.createTime),
+      perform_time: Number(txn.performTime ?? 0),
+      cancel_time: Number(txn.cancelTime ?? 0),
+      transaction: txn.transactionId,
+      state: txn.state,
+      reason: txn.cancelReason,
+    }));
 
     return this.successResponse(requestId, { transactions });
   }
@@ -457,6 +448,7 @@ export class PaymeService {
   /**
    * Reverse a completed payment after Payme cancellation.
    * Finds the payment by reference, deletes it, and updates booking.paidAmount.
+   * Wrapped in a database transaction for atomicity.
    */
   private async refundPayment(
     transactionId: string,
@@ -470,20 +462,22 @@ export class PaymeService {
     });
 
     if (payment) {
-      // Remove the payment record
-      await this.paymentRepository.remove(payment);
+      await this.dataSource.transaction(async (manager) => {
+        // Remove the payment record
+        await manager.remove(payment);
 
-      // Decrease booking.paidAmount
-      const booking = await this.bookingRepository.findOne({
-        where: { id: bookingId },
-      });
-
-      if (booking) {
-        const updatedPaid = Math.max(0, Number(booking.paidAmount) - amount);
-        await this.bookingRepository.update(bookingId, {
-          paidAmount: updatedPaid,
+        // Decrease booking.paidAmount
+        const booking = await manager.findOne(Booking, {
+          where: { id: bookingId },
         });
-      }
+
+        if (booking) {
+          const updatedPaid = Math.max(0, Number(booking.paidAmount) - amount);
+          await manager.update(Booking, bookingId, {
+            paidAmount: updatedPaid,
+          });
+        }
+      });
 
       this.logger.log(
         `Payme refund completed: txn=${transactionId}, booking=#${bookingId}, amount=${amount}`,
@@ -500,6 +494,7 @@ export class PaymeService {
   /**
    * Verify Basic auth header against configured merchant credentials.
    * Expected format: "Basic base64(merchantId:secretKey)"
+   * Uses crypto.timingSafeEqual to prevent timing attacks.
    */
   verifyAuth(authHeader: string | undefined): boolean {
     if (!authHeader || !authHeader.startsWith('Basic ')) {
@@ -516,7 +511,16 @@ export class PaymeService {
     }
 
     const expected = `${this.merchantId}:${this.secretKey}`;
-    return decoded === expected;
+
+    // Use timing-safe comparison to prevent timing attacks
+    const decodedBuf = Buffer.from(decoded, 'utf-8');
+    const expectedBuf = Buffer.from(expected, 'utf-8');
+
+    if (decodedBuf.length !== expectedBuf.length) {
+      return false;
+    }
+
+    return timingSafeEqual(decodedBuf, expectedBuf);
   }
 
   /**

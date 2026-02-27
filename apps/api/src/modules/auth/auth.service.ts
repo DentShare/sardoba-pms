@@ -4,14 +4,20 @@ import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'crypto';
 
 import { User } from '../../database/entities/user.entity';
+import { Property } from '../../database/entities/property.entity';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { JwtPayload } from './strategies/jwt.strategy';
+import { EmailService } from '../notifications/email/email.service';
 
 const BCRYPT_SALT_ROUNDS = 12;
+const RESET_TOKEN_EXPIRY_HOURS = 1;
 
 @Injectable()
 export class AuthService {
@@ -20,8 +26,11 @@ export class AuthService {
   constructor(
     @InjectRepository(User)
     private readonly userRepository: Repository<User>,
+    @InjectRepository(Property)
+    private readonly propertyRepository: Repository<Property>,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly emailService: EmailService,
   ) {}
 
   // ─── LOGIN ──────────────────────────────────────────────────────────────────
@@ -94,18 +103,58 @@ export class AuthService {
   // ─── REGISTER ───────────────────────────────────────────────────────────────
 
   async register(dto: RegisterDto) {
-    const { name, email, password, property_id, role } = dto;
+    const { name, email, password, phone, property_name, property_id } = dto;
 
-    // Check if email already exists for this property
-    const existingUser = await this.userRepository.findOne({
-      where: { email, propertyId: property_id },
-    });
+    let resolvedPropertyId = property_id;
 
-    if (existingUser) {
+    // If property_name is provided and no property_id, create a new property (self-registration)
+    if (property_name && !property_id) {
+      // Check if email already exists globally (for self-registration)
+      const existingUser = await this.userRepository.findOne({
+        where: { email },
+      });
+
+      if (existingUser) {
+        throw new SardobaException(
+          ErrorCode.ALREADY_EXISTS,
+          { email },
+          'Пользователь с таким email уже существует',
+        );
+      }
+
+      // Create a new property
+      const property = this.propertyRepository.create({
+        name: property_name,
+        city: 'Tashkent',
+        address: 'To be updated',
+        phone: phone || '+998000000000',
+        currency: 'UZS',
+        timezone: 'Asia/Tashkent',
+        locale: 'ru',
+      });
+
+      const savedProperty = await this.propertyRepository.save(property);
+      resolvedPropertyId = savedProperty.id;
+
+      this.logger.log(`New property "${property_name}" created (ID: ${resolvedPropertyId})`);
+    } else if (property_id) {
+      // Check if email already exists for this property
+      const existingUser = await this.userRepository.findOne({
+        where: { email, propertyId: property_id },
+      });
+
+      if (existingUser) {
+        throw new SardobaException(
+          ErrorCode.ALREADY_EXISTS,
+          { email, property_id },
+          'User with this email already exists for this property',
+        );
+      }
+    } else {
       throw new SardobaException(
-        ErrorCode.ALREADY_EXISTS,
-        { email, property_id },
-        'User with this email already exists for this property',
+        ErrorCode.VALIDATION_ERROR,
+        undefined,
+        'Either property_name or property_id must be provided',
       );
     }
 
@@ -116,9 +165,10 @@ export class AuthService {
     const user = this.userRepository.create({
       name,
       email,
+      phone: phone || null,
       passwordHash,
-      propertyId: property_id,
-      role,
+      propertyId: resolvedPropertyId!,
+      role: 'owner',
       isActive: true,
     });
 
@@ -147,6 +197,94 @@ export class AuthService {
         property_id: savedUser.propertyId,
       },
     };
+  }
+
+  // ─── FORGOT PASSWORD ──────────────────────────────────────────────────────
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const { email } = dto;
+
+    const user = await this.userRepository.findOne({
+      where: { email },
+    });
+
+    // Always return success to prevent email enumeration
+    if (!user) {
+      this.logger.warn(`Forgot password attempt for non-existent email: ${email}`);
+      return { message: 'If an account with this email exists, a reset link has been sent.' };
+    }
+
+    // Generate reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expiresAt = new Date(Date.now() + RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000);
+
+    // Store hashed token in DB
+    await this.userRepository.update(user.id, {
+      resetToken: hashedToken,
+      resetTokenExpiresAt: expiresAt,
+    });
+
+    const resetUrl = `${this.configService.get<string>('FRONTEND_URL', 'http://localhost:3002')}/reset-password?token=${resetToken}`;
+
+    await this.emailService.sendPasswordResetEmail(
+      user.email,
+      user.name,
+      resetUrl,
+    );
+
+    this.logger.log(`Password reset email sent to ${email}`);
+
+    return { message: 'If an account with this email exists, a reset link has been sent.' };
+  }
+
+  // ─── RESET PASSWORD ───────────────────────────────────────────────────────
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const { token, password } = dto;
+
+    // Hash the provided token to compare with stored hash
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+
+    const user = await this.userRepository.findOne({
+      where: { resetToken: hashedToken },
+    });
+
+    if (!user) {
+      throw new SardobaException(
+        ErrorCode.TOKEN_INVALID,
+        undefined,
+        'Недействительный или истёкший токен сброса пароля',
+      );
+    }
+
+    // Check if token has expired
+    if (!user.resetTokenExpiresAt || user.resetTokenExpiresAt < new Date()) {
+      // Clear the expired token
+      await this.userRepository.update(user.id, {
+        resetToken: null,
+        resetTokenExpiresAt: null,
+      });
+
+      throw new SardobaException(
+        ErrorCode.TOKEN_EXPIRED,
+        undefined,
+        'Токен сброса пароля истёк. Запросите новый.',
+      );
+    }
+
+    // Hash new password and clear reset token
+    const passwordHash = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+    await this.userRepository.update(user.id, {
+      passwordHash,
+      resetToken: null,
+      resetTokenExpiresAt: null,
+      refreshToken: null, // Invalidate all existing sessions
+    });
+
+    this.logger.log(`Password reset for user ${user.email}`);
+
+    return { message: 'Пароль успешно изменён. Теперь вы можете войти с новым паролем.' };
   }
 
   // ─── REFRESH ────────────────────────────────────────────────────────────────

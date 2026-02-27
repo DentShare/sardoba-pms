@@ -7,6 +7,7 @@ import {
   IsDateString,
   IsArray,
   Min,
+  Max,
   Matches,
   ValidateNested,
   MaxLength,
@@ -19,6 +20,7 @@ export class ExtraSelectionDto {
 
   @IsInt()
   @Min(1)
+  @Max(100)
   quantity!: number;
 }
 
@@ -56,11 +58,13 @@ export class PublicBookingDto {
 
   @IsInt()
   @Min(1)
+  @Max(20)
   adults!: number;
 
   @IsOptional()
   @IsInt()
   @Min(0)
+  @Max(20)
   children?: number;
 
   @IsOptional()
