@@ -73,6 +73,10 @@ export interface Guest {
   dateOfBirth?: string; // YYYY-MM-DD
   isVip: boolean;
   notes?: string;
+  tags: string[];
+  isBlacklisted: boolean;
+  blacklistReason?: string;
+  blacklistedAt?: Date;
   totalRevenue: number; // denormalized, updated by trigger
   visitCount: number;
   createdAt: Date;
@@ -112,6 +116,12 @@ export interface Booking {
   rateId?: number;
   totalAmount: number; // tiyin
   paidAmount: number; // denormalized, updated by trigger
+  discountAmount: number; // tiyin
+  promoCodeId?: number;
+  earlyCheckinTime?: string; // HH:MM
+  earlyCheckinPrice: number; // tiyin
+  lateCheckoutTime?: string; // HH:MM
+  lateCheckoutPrice: number; // tiyin
   status: BookingStatus;
   source: BookingSource;
   sourceReference?: string; // ID in OTA
@@ -283,6 +293,7 @@ export interface NotificationSettings {
   dailyDigestTime: string; // HH:MM
   eventPayment: boolean;
   eventSyncError: boolean;
+  eventBirthday: boolean;
   updatedAt?: Date;
 }
 
@@ -455,6 +466,34 @@ export interface CreatePublicBookingDto {
   payment_method: 'on_arrival' | 'online';
 }
 
+// ─── PROMO CODE ───────────────────────────────────────────────────────────
+export type DiscountType = 'percent' | 'fixed';
+
+export interface PromoCode {
+  id: number;
+  propertyId: number;
+  code: string;
+  discountType: DiscountType;
+  discountValue: number; // percent (1-100) or fixed amount in tiyin
+  maxUses: number | null; // null = unlimited
+  usedCount: number;
+  minNights: number;
+  minAmount: number; // tiyin
+  appliesToRooms: number[]; // [] = all rooms
+  validFrom: string | null; // YYYY-MM-DD
+  validTo: string | null; // YYYY-MM-DD
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface PromoValidationResult {
+  valid: boolean;
+  discount: number; // calculated discount in tiyin
+  discountType: string;
+  message?: string;
+}
+
 // ─── DYNAMIC PRICING (Agent 16) ────────────────────────────────────────────
 
 export type DynamicPricingTriggerType =
@@ -496,6 +535,145 @@ export interface PricingChangeLog {
   change_percent: number;
   trigger_value: number;
   created_at: string;
+}
+
+// ─── INVOICE ─────────────────────────────────────────────────────────────────
+export interface Invoice {
+  id: number;
+  propertyId: number;
+  bookingId: number;
+  invoiceNumber: string; // INV-2025-0001
+  companyName: string;
+  companyInn?: string;
+  companyAddress?: string;
+  companyBank?: string;
+  companyAccount?: string;
+  companyMfo?: string;
+  totalAmount: number; // tiyin
+  pdfUrl?: string;
+  issuedAt: Date;
+  createdAt: Date;
+}
+
+// ─── HOLIDAY CALENDAR ────────────────────────────────────────────────────────
+export interface HolidayRule {
+  id: number;
+  propertyId: number;
+  name: string;
+  dateFrom: string; // YYYY-MM-DD
+  dateTo: string;
+  priceBoostPercent: number;
+  minNights: number;
+  recurYearly: boolean;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── MIN NIGHTS RULE ─────────────────────────────────────────────────────────
+export interface MinNightsRule {
+  id: number;
+  propertyId: number;
+  dateFrom: string; // YYYY-MM-DD
+  dateTo: string;
+  minNights: number;
+  appliesToRooms: number[]; // [] = all rooms
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── REVIEW / REPUTATION ────────────────────────────────────────────────────
+export type ReviewPlatform = 'google' | 'booking_com' | 'tripadvisor' | 'airbnb' | 'other';
+
+export interface ReviewScore {
+  id: number;
+  propertyId: number;
+  platform: ReviewPlatform;
+  score: number; // e.g. 4.5
+  reviewCount: number;
+  fetchedAt: Date;
+}
+
+export interface ReputationOverview {
+  scores: ReviewScore[];
+  averageScore: number; // weighted
+  totalReviews: number;
+}
+
+// ─── REFERRAL ────────────────────────────────────────────────────────────────
+export type BonusType = 'percent' | 'fixed' | 'free_night';
+
+export interface Referral {
+  id: number;
+  propertyId: number;
+  referrerGuestId: number;
+  referredGuestId?: number;
+  bookingId?: number;
+  referralCode: string; // REF-{guestId}-{hex}
+  bonusType: BonusType;
+  bonusValue: number;
+  bonusApplied: boolean;
+  createdAt: Date;
+  usedAt?: Date;
+}
+
+// ─── NOTIFICATION LOG ────────────────────────────────────────────────────────
+export type NotificationChannel = 'whatsapp' | 'telegram' | 'email' | 'sms';
+export type NotificationEventType =
+  | 'booking_confirmed'
+  | 'upsell_pre_arrival'
+  | 'review_request'
+  | 'birthday_alert'
+  | 'daily_digest'
+  | 'payment_received';
+
+export interface NotificationLogEntry {
+  id: number;
+  propertyId: number;
+  bookingId?: number;
+  guestId?: number;
+  eventType: NotificationEventType;
+  channel: NotificationChannel;
+  status: 'sent' | 'failed' | 'skipped';
+  metadata?: Record<string, unknown>;
+  createdAt: Date;
+}
+
+// ─── AI FEATURES ─────────────────────────────────────────────────────────────
+export interface GuestTip {
+  text: string;
+  type: 'upsell' | 'preference' | 'warning' | 'general';
+}
+
+export interface PassportOcrData {
+  lastName: string | null;
+  firstName: string | null;
+  middleName: string | null;
+  birthDate: string | null; // YYYY-MM-DD
+  passportNumber: string | null;
+  nationality: string | null; // ISO alpha-2
+  expiryDate: string | null;
+  gender: string | null; // M or F
+}
+
+export interface PassportOcrResult {
+  confidence: number;
+  data: PassportOcrData;
+}
+
+// ─── FLEXIBILITY OPTIONS ─────────────────────────────────────────────────────
+export interface FlexibilityOptions {
+  earlyCheckin: {
+    available: boolean;
+    earliestTime?: string; // HH:MM
+    price?: number; // tiyin
+  };
+  lateCheckout: {
+    available: boolean;
+    latestTime?: string; // HH:MM
+    price?: number; // tiyin
+  };
 }
 
 // ─── PUSH NOTIFICATIONS (Agent 17) ──────────────────────────────────────────

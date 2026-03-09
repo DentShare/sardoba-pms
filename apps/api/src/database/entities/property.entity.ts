@@ -77,6 +77,15 @@ export class Property {
   @Column({ type: 'jsonb', name: 'mini_site_config', default: '{}' })
   miniSiteConfig!: Record<string, unknown>;
 
+  @Column({ type: 'varchar', length: 500, name: 'google_review_url', nullable: true })
+  googleReviewUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 500, name: 'tripadvisor_url', nullable: true })
+  tripadvisorUrl!: string | null;
+
+  @Column({ type: 'varchar', length: 500, name: 'booking_com_review_url', nullable: true })
+  bookingComReviewUrl!: string | null;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 

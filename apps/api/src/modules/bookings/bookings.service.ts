@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { EventEmitter2 } from '@nestjs/event-emitter';
@@ -12,6 +12,7 @@ import { Guest } from '@/database/entities/guest.entity';
 import { AvailabilityService } from './availability.service';
 import { BookingNumberService } from './booking-number.service';
 import { RatesService } from '../rates/rates.service';
+import { MinNightsService } from '../rates/min-nights.service';
 import { GuestsService } from '../guests/guests.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -38,6 +39,7 @@ export class BookingsService {
     private readonly availabilityService: AvailabilityService,
     private readonly bookingNumberService: BookingNumberService,
     private readonly ratesService: RatesService,
+    private readonly minNightsService: MinNightsService,
     private readonly guestsService: GuestsService,
     private readonly dataSource: DataSource,
     private readonly eventEmitter: EventEmitter2,
@@ -193,6 +195,22 @@ export class BookingsService {
       );
     }
 
+    // 3b. Check min-nights rules
+    const minNightsResult = await this.minNightsService.checkMinNights(
+      propertyId,
+      dto.room_id,
+      dto.check_in,
+      dto.check_out,
+    );
+
+    if (!minNightsResult.valid) {
+      throw new BadRequestException({
+        code: 'MIN_NIGHTS_VIOLATION',
+        message: `Минимальный срок проживания: ${minNightsResult.minNights} ночей (${minNightsResult.ruleName})`,
+        minNights: minNightsResult.minNights,
+      });
+    }
+
     // 4. Find or create guest
     let guestId: number;
     if (dto.guest_id) {
@@ -223,6 +241,16 @@ export class BookingsService {
         'Either guest_id or guest data must be provided',
       );
     }
+
+    // 4b. Check if guest is blacklisted (warning, not blocking)
+    const guestEntity = await this.guestRepository.findOne({
+      where: { id: guestId, propertyId },
+    });
+
+    const blacklistWarning =
+      guestEntity?.isBlacklisted
+        ? { blacklisted: true, reason: guestEntity.blacklistReason }
+        : undefined;
 
     // 5. Calculate price
     const nights = differenceInCalendarDays(
@@ -307,7 +335,14 @@ export class BookingsService {
     );
 
     // Return full booking with relations
-    return this.findOne(savedBooking.id, propertyId);
+    const result = await this.findOne(savedBooking.id, propertyId);
+
+    // Include blacklist warning if applicable
+    if (blacklistWarning) {
+      return { ...result, warning: blacklistWarning };
+    }
+
+    return result;
   }
 
   // ── update ───────────────────────────────────────────────────────────────
@@ -852,7 +887,158 @@ export class BookingsService {
     };
   }
 
+  // ── Flexibility: Early Check-in / Late Checkout ─────────────────────
+
+  /**
+   * Check whether early check-in and/or late check-out are available
+   * for this booking. A conflict exists when another active booking
+   * uses the same room on the adjacent date.
+   *
+   * Early check-in conflict: another booking checks OUT on this booking's
+   * check-in date (same room).
+   * Late check-out conflict: another booking checks IN on this booking's
+   * check-out date (same room).
+   */
+  async getFlexibilityOptions(propertyId: number, bookingId: number) {
+    const booking = await this.findBookingOrFail(bookingId, propertyId);
+
+    // Check for early check-in conflict:
+    // another booking whose check_out === this booking's check_in on the same room
+    const earlyConflict = await this.bookingRepository
+      .createQueryBuilder('b')
+      .where('b.roomId = :roomId', { roomId: booking.roomId })
+      .andWhere('b.checkOut = :checkIn', { checkIn: booking.checkIn })
+      .andWhere('b.id != :bookingId', { bookingId })
+      .andWhere('b.status NOT IN (:...excludeStatuses)', {
+        excludeStatuses: ['cancelled', 'no_show'],
+      })
+      .getOne();
+
+    // Check for late check-out conflict:
+    // another booking whose check_in === this booking's check_out on the same room
+    const lateConflict = await this.bookingRepository
+      .createQueryBuilder('b')
+      .where('b.roomId = :roomId', { roomId: booking.roomId })
+      .andWhere('b.checkIn = :checkOut', { checkOut: booking.checkOut })
+      .andWhere('b.id != :bookingId', { bookingId })
+      .andWhere('b.status NOT IN (:...excludeStatuses)', {
+        excludeStatuses: ['cancelled', 'no_show'],
+      })
+      .getOne();
+
+    return {
+      early_checkin_available: !earlyConflict,
+      late_checkout_available: !lateConflict,
+      early_checkin_conflict_booking_id: earlyConflict?.id ?? null,
+      late_checkout_conflict_booking_id: lateConflict?.id ?? null,
+      current_early_checkin_time: booking.earlyCheckinTime,
+      current_early_checkin_price: Number(booking.earlyCheckinPrice),
+      current_late_checkout_time: booking.lateCheckoutTime,
+      current_late_checkout_price: Number(booking.lateCheckoutPrice),
+    };
+  }
+
+  /**
+   * Set early check-in time and price for a booking.
+   */
+  async addEarlyCheckin(
+    propertyId: number,
+    bookingId: number,
+    time: string,
+    price: number,
+  ) {
+    const booking = await this.findBookingOrFail(bookingId, propertyId);
+    this.ensureBookingModifiable(booking);
+
+    booking.earlyCheckinTime = time;
+    booking.earlyCheckinPrice = price;
+
+    await this.bookingRepository.save(booking);
+    return this.findOne(bookingId, propertyId);
+  }
+
+  /**
+   * Set late check-out time and price for a booking.
+   */
+  async addLateCheckout(
+    propertyId: number,
+    bookingId: number,
+    time: string,
+    price: number,
+  ) {
+    const booking = await this.findBookingOrFail(bookingId, propertyId);
+    this.ensureBookingModifiable(booking);
+
+    booking.lateCheckoutTime = time;
+    booking.lateCheckoutPrice = price;
+
+    await this.bookingRepository.save(booking);
+    return this.findOne(bookingId, propertyId);
+  }
+
+  /**
+   * Remove early check-in from a booking.
+   */
+  async removeEarlyCheckin(propertyId: number, bookingId: number) {
+    const booking = await this.findBookingOrFail(bookingId, propertyId);
+    this.ensureBookingModifiable(booking);
+
+    booking.earlyCheckinTime = null;
+    booking.earlyCheckinPrice = 0;
+
+    await this.bookingRepository.save(booking);
+    return this.findOne(bookingId, propertyId);
+  }
+
+  /**
+   * Remove late check-out from a booking.
+   */
+  async removeLateCheckout(propertyId: number, bookingId: number) {
+    const booking = await this.findBookingOrFail(bookingId, propertyId);
+    this.ensureBookingModifiable(booking);
+
+    booking.lateCheckoutTime = null;
+    booking.lateCheckoutPrice = 0;
+
+    await this.bookingRepository.save(booking);
+    return this.findOne(bookingId, propertyId);
+  }
+
   // ── Private helpers ────────────────────────────────────────────────────
+
+  /**
+   * Find a booking by id and propertyId, or throw NOT_FOUND.
+   */
+  private async findBookingOrFail(
+    id: number,
+    propertyId: number,
+  ): Promise<Booking> {
+    const booking = await this.bookingRepository.findOne({
+      where: { id, propertyId },
+    });
+
+    if (!booking) {
+      throw new SardobaException(ErrorCode.NOT_FOUND, {
+        resource: 'booking',
+        id,
+      });
+    }
+
+    return booking;
+  }
+
+  /**
+   * Ensure a booking can be modified (not in an immutable status).
+   */
+  private ensureBookingModifiable(booking: Booking): void {
+    if (IMMUTABLE_STATUSES.includes(booking.status)) {
+      throw new SardobaException(
+        ErrorCode.BOOKING_CANCELLED,
+        { status: booking.status },
+        `Cannot modify booking with status '${booking.status}'`,
+      );
+    }
+  }
 
   /**
    * Validate check-in/check-out dates.
@@ -988,6 +1174,11 @@ export class BookingsService {
       children: booking.children,
       total_amount: Number(booking.totalAmount),
       paid_amount: Number(booking.paidAmount),
+      discount_amount: Number(booking.discountAmount),
+      early_checkin_time: booking.earlyCheckinTime,
+      early_checkin_price: Number(booking.earlyCheckinPrice),
+      late_checkout_time: booking.lateCheckoutTime,
+      late_checkout_price: Number(booking.lateCheckoutPrice),
       status: booking.status,
       source: booking.source,
       created_at: booking.createdAt,
@@ -1017,6 +1208,12 @@ export class BookingsService {
       source: booking.source,
       source_reference: booking.sourceReference,
       notes: booking.notes,
+      discount_amount: Number(booking.discountAmount),
+      promo_code_id: booking.promoCodeId,
+      early_checkin_time: booking.earlyCheckinTime,
+      early_checkin_price: Number(booking.earlyCheckinPrice),
+      late_checkout_time: booking.lateCheckoutTime,
+      late_checkout_price: Number(booking.lateCheckoutPrice),
       cancelled_at: booking.cancelledAt,
       cancel_reason: booking.cancelReason,
       created_by: booking.createdBy,
@@ -1038,6 +1235,9 @@ export class BookingsService {
             phone: booking.guest.phone,
             email: booking.guest.email,
             is_vip: booking.guest.isVip,
+            tags: booking.guest.tags ?? [],
+            is_blacklisted: booking.guest.isBlacklisted,
+            blacklist_reason: booking.guest.blacklistReason,
           }
         : null,
       rate: booking.rate

@@ -9,6 +9,7 @@ import { WidgetEvent } from '@/database/entities/widget-event.entity';
 import { BookingsModule } from '../bookings/bookings.module';
 import { RatesModule } from '../rates/rates.module';
 import { GuestsModule } from '../guests/guests.module';
+import { PromoCodesModule } from '../promo-codes/promo-codes.module';
 import { PublicBookingController } from './public-booking.controller';
 import { PublicBookingService } from './public-booking.service';
 
@@ -25,6 +26,7 @@ import { PublicBookingService } from './public-booking.service';
     BookingsModule,
     RatesModule,
     GuestsModule,
+    PromoCodesModule,
   ],
   controllers: [PublicBookingController],
   providers: [PublicBookingService],

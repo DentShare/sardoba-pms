@@ -59,6 +59,18 @@ export class Guest {
   @Column({ type: 'text', nullable: true })
   notes!: string | null;
 
+  @Column({ type: 'text', array: true, default: '{}' })
+  tags!: string[];
+
+  @Column({ type: 'boolean', name: 'is_blacklisted', default: false })
+  isBlacklisted!: boolean;
+
+  @Column({ type: 'text', name: 'blacklist_reason', nullable: true })
+  blacklistReason!: string | null;
+
+  @Column({ type: 'timestamptz', name: 'blacklisted_at', nullable: true })
+  blacklistedAt!: Date | null;
+
   @Column({ type: 'bigint', name: 'total_revenue', default: 0 })
   totalRevenue!: number;
 

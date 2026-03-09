@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Patch,
+  Delete,
   Param,
   Query,
   Body,
@@ -21,12 +22,16 @@ import {
 } from '@nestjs/swagger';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { RolesGuard } from '@/modules/auth/guards/roles.guard';
+import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
 import { CancelBookingDto } from './dto/cancel-booking.dto';
 import { BookingFilterDto } from './dto/booking-filter.dto';
 import { CalendarQueryDto } from './dto/calendar-query.dto';
+import { AddEarlyCheckinDto } from './dto/add-early-checkin.dto';
+import { AddLateCheckoutDto } from './dto/add-late-checkout.dto';
 
 /**
  * Request interface extending Express Request with JWT user payload.
@@ -234,6 +239,127 @@ export class BookingsController {
       query.date_from,
       query.date_to,
       query.room_type,
+    );
+  }
+
+  // ── GET /v1/bookings/:id/flexibility-options ──────────────────────────
+
+  @Get('bookings/:id/flexibility-options')
+  @ApiOperation({
+    summary: 'Check early check-in and late check-out availability',
+  })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({
+    status: 200,
+    description: 'Flexibility options with conflict info',
+  })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  async getFlexibilityOptions(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.bookingsService.getFlexibilityOptions(
+      req.user.propertyId,
+      id,
+    );
+  }
+
+  // ── POST /v1/bookings/:id/early-checkin ──────────────────────────────
+
+  @Post('bookings/:id/early-checkin')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Add early check-in to a booking' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Early check-in added' })
+  @ApiResponse({ status: 400, description: 'VALIDATION_ERROR' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  @ApiResponse({ status: 422, description: 'BOOKING_CANCELLED (cannot modify)' })
+  async addEarlyCheckin(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddEarlyCheckinDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.bookingsService.addEarlyCheckin(
+      req.user.propertyId,
+      id,
+      dto.time,
+      dto.price,
+    );
+  }
+
+  // ── POST /v1/bookings/:id/late-checkout ──────────────────────────────
+
+  @Post('bookings/:id/late-checkout')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Add late check-out to a booking' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Late check-out added' })
+  @ApiResponse({ status: 400, description: 'VALIDATION_ERROR' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  @ApiResponse({ status: 422, description: 'BOOKING_CANCELLED (cannot modify)' })
+  async addLateCheckout(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: AddLateCheckoutDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.bookingsService.addLateCheckout(
+      req.user.propertyId,
+      id,
+      dto.time,
+      dto.price,
+    );
+  }
+
+  // ── DELETE /v1/bookings/:id/early-checkin ─────────────────────────────
+
+  @Delete('bookings/:id/early-checkin')
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Remove early check-in from a booking' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Early check-in removed' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  @ApiResponse({ status: 422, description: 'BOOKING_CANCELLED (cannot modify)' })
+  async removeEarlyCheckin(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.bookingsService.removeEarlyCheckin(
+      req.user.propertyId,
+      id,
+    );
+  }
+
+  // ── DELETE /v1/bookings/:id/late-checkout ─────────────────────────────
+
+  @Delete('bookings/:id/late-checkout')
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Remove late check-out from a booking' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Late check-out removed' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  @ApiResponse({ status: 422, description: 'BOOKING_CANCELLED (cannot modify)' })
+  async removeLateCheckout(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.bookingsService.removeLateCheckout(
+      req.user.propertyId,
+      id,
     );
   }
 

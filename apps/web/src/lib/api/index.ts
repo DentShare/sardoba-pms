@@ -8,3 +8,8 @@ export * as channelsApi from './channels';
 export * as propertyApi from './property';
 export * as usersApi from './users';
 export * as floorPlansApi from './floor-plans';
+export * as invoicesApi from './invoices';
+export * as holidaysApi from './holidays';
+export * as promoCodesApi from './promo-codes';
+export * as referralsApi from './referrals';
+export * as reputationApi from './reputation';

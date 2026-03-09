@@ -112,6 +112,9 @@ interface FormState {
   timezone: string;
   cover_photo: string;
   booking_enabled: boolean;
+  google_review_url: string;
+  tripadvisor_url: string;
+  booking_com_review_url: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -128,6 +131,9 @@ const EMPTY_FORM: FormState = {
   timezone: 'Asia/Tashkent',
   cover_photo: '',
   booking_enabled: false,
+  google_review_url: '',
+  tripadvisor_url: '',
+  booking_com_review_url: '',
 };
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -158,6 +164,9 @@ export default function SettingsGeneralPage() {
         timezone: property.timezone || 'Asia/Tashkent',
         cover_photo: property.cover_photo || '',
         booking_enabled: property.booking_enabled ?? false,
+        google_review_url: property.google_review_url || '',
+        tripadvisor_url: property.tripadvisor_url || '',
+        booking_com_review_url: property.booking_com_review_url || '',
       });
     } catch {
       toast.error('Ошибка загрузки данных');
@@ -220,6 +229,9 @@ export default function SettingsGeneralPage() {
         timezone: form.timezone,
         cover_photo: form.cover_photo.trim() || null,
         booking_enabled: form.booking_enabled,
+        google_review_url: form.google_review_url.trim() || null,
+        tripadvisor_url: form.tripadvisor_url.trim() || null,
+        booking_com_review_url: form.booking_com_review_url.trim() || null,
       };
 
       await updateProperty(PROPERTY_ID, dto);
@@ -464,6 +476,32 @@ export default function SettingsGeneralPage() {
                 )}
               />
             </button>
+          </div>
+        </div>
+
+        {/* ── Review URLs ──────────────────────────────────────────────── */}
+        <div className="bg-white rounded-xl border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Ссылки на отзывы</h3>
+          <p className="text-sm text-gray-500 mb-4">Ссылки будут отправлены гостям после выезда для сбора отзывов</p>
+          <div className="space-y-4">
+            <Input
+              label="Google Reviews URL"
+              value={form.google_review_url}
+              onChange={(e) => updateField('google_review_url', e.target.value)}
+              placeholder="https://g.page/..."
+            />
+            <Input
+              label="TripAdvisor URL"
+              value={form.tripadvisor_url}
+              onChange={(e) => updateField('tripadvisor_url', e.target.value)}
+              placeholder="https://tripadvisor.com/..."
+            />
+            <Input
+              label="Booking.com Reviews URL"
+              value={form.booking_com_review_url}
+              onChange={(e) => updateField('booking_com_review_url', e.target.value)}
+              placeholder="https://booking.com/..."
+            />
           </div>
         </div>
 

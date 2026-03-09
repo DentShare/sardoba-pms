@@ -278,6 +278,16 @@ const navigation: NavItem[] = [
         href: '/settings/floor-plan',
         icon: <GridPlanIcon />,
       },
+      {
+        label: 'Промокоды',
+        href: '/settings/promo-codes',
+        icon: <TagSmallIcon />,
+      },
+      {
+        label: 'Рефералы',
+        href: '/settings/referral',
+        icon: <LinkIcon />,
+      },
     ],
   },
 ];

@@ -10,6 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { GuestSearch, type NewGuestData } from './GuestSearch';
 import { useCreateBooking, useConfirmBooking, useCheckinBooking } from '@/lib/hooks/use-bookings';
 import { useRooms } from '@/lib/hooks/use-rooms';
+import { useGuest } from '@/lib/hooks/use-guests';
 import { calculateRate } from '@/lib/api/rates';
 import { formatMoney } from '@/lib/utils/money';
 import { getNights } from '@/lib/utils/dates';
@@ -63,6 +64,7 @@ export function BookingForm({
   const [rateCalc, setRateCalc] = useState<RateCalculation | null>(null);
 
   const { data: rooms } = useRooms(propertyId || null);
+  const { data: selectedGuest } = useGuest(guestId);
   const createBooking = useCreateBooking();
   const confirmMut = useConfirmBooking();
   const checkinMut = useCheckinBooking();
@@ -178,6 +180,12 @@ export function BookingForm({
           }}
           propertyId={propertyId}
         />
+
+        {selectedGuest?.isBlacklisted && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 text-sm text-yellow-800">
+            &#9888; Внимание: этот гость находится в чёрном списке. Причина: {selectedGuest.blacklistReason || 'не указана'}
+          </div>
+        )}
 
         <Select
           label="Номер"

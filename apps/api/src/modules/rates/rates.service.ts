@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Rate, RateType } from '@/database/entities/rate.entity';
 import { Room } from '@/database/entities/room.entity';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { HolidayCalendarService } from '../holiday-calendar/holiday-calendar.service';
 import { CreateRateDto } from './dto/create-rate.dto';
 import { UpdateRateDto } from './dto/update-rate.dto';
 import { RateQueryDto } from './dto/rate-query.dto';
@@ -14,6 +15,7 @@ export interface NightBreakdown {
   date: string;
   price: number;
   rate_name: string;
+  holiday_boost_percent?: number;
 }
 
 export interface RateCalculation {
@@ -41,6 +43,7 @@ export class RatesService {
     private readonly rateRepository: Repository<Rate>,
     @InjectRepository(Room)
     private readonly roomRepository: Repository<Room>,
+    private readonly holidayCalendarService: HolidayCalendarService,
   ) {}
 
   // ── List rates with pagination and filters ─────────────────────────────────
@@ -318,7 +321,7 @@ export class RatesService {
         });
       }
 
-      return this.calculateWithExplicitRate(room, explicitRate, checkIn, totalNights);
+      return this.calculateWithExplicitRate(propertyId, room, explicitRate, checkIn, totalNights);
     }
 
     // Load all active rates for this property
@@ -326,17 +329,18 @@ export class RatesService {
       where: { propertyId, isActive: true },
     });
 
-    return this.calculateWithPriority(room, rates, checkIn, totalNights);
+    return this.calculateWithPriority(propertyId, room, rates, checkIn, totalNights);
   }
 
   // ── Private: calculate using an explicit rate for all nights ───────────────
 
-  private calculateWithExplicitRate(
+  private async calculateWithExplicitRate(
+    propertyId: number,
     room: Room,
     rate: Rate,
     checkIn: string,
     totalNights: number,
-  ): RateCalculation {
+  ): Promise<RateCalculation> {
     const breakdown: NightBreakdown[] = [];
     let total = 0;
 
@@ -344,12 +348,23 @@ export class RatesService {
 
     for (let i = 0; i < totalNights; i++) {
       const dateStr = this.formatDate(currentDate);
-      const nightPrice = this.resolveNightPrice(room, rate);
+      let nightPrice = this.resolveNightPrice(room, rate);
+
+      // Apply holiday boost if applicable
+      const boostPercent = await this.holidayCalendarService.getBoostForDate(
+        propertyId,
+        dateStr,
+      );
+
+      if (boostPercent > 0) {
+        nightPrice = Math.round(nightPrice * (1 + boostPercent / 100));
+      }
 
       breakdown.push({
         date: dateStr,
         price: nightPrice,
         rate_name: rate.name,
+        ...(boostPercent > 0 ? { holiday_boost_percent: boostPercent } : {}),
       });
 
       total += nightPrice;
@@ -369,12 +384,13 @@ export class RatesService {
 
   // ── Private: calculate using priority system ───────────────────────────────
 
-  private calculateWithPriority(
+  private async calculateWithPriority(
+    propertyId: number,
     room: Room,
     rates: Rate[],
     checkIn: string,
     totalNights: number,
-  ): RateCalculation {
+  ): Promise<RateCalculation> {
     const breakdown: NightBreakdown[] = [];
     let total = 0;
     const rateNamesUsed = new Set<string>();
@@ -405,12 +421,23 @@ export class RatesService {
         );
       }
 
-      const nightPrice = this.resolveNightPrice(room, applicableRate);
+      let nightPrice = this.resolveNightPrice(room, applicableRate);
+
+      // Apply holiday boost if applicable
+      const boostPercent = await this.holidayCalendarService.getBoostForDate(
+        propertyId,
+        dateStr,
+      );
+
+      if (boostPercent > 0) {
+        nightPrice = Math.round(nightPrice * (1 + boostPercent / 100));
+      }
 
       breakdown.push({
         date: dateStr,
         price: nightPrice,
         rate_name: applicableRate.name,
+        ...(boostPercent > 0 ? { holiday_boost_percent: boostPercent } : {}),
       });
 
       total += nightPrice;

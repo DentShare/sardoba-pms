@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { subDays, format } from 'date-fns';
 import { useQuery } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/cn';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Button } from '@/components/ui/Button';
-import { PageSpinner } from '@/components/ui/Spinner';
+import { Modal } from '@/components/ui/Modal';
+import { Input } from '@/components/ui/Input';
+import { Select } from '@/components/ui/Select';
+import { Spinner, PageSpinner } from '@/components/ui/Spinner';
 import {
   getSummary,
   getOccupancy,
@@ -21,6 +24,7 @@ import {
   type SourceData,
   type RoomStatsData,
 } from '@/lib/api/analytics';
+import { getReputation, upsertScore, type ReputationOverview } from '@/lib/api/reputation';
 import { formatMoney, formatMoneyCompact } from '@/lib/utils/money';
 import { SOURCE_COLORS } from '@/lib/utils/booking-colors';
 import { usePropertyId } from '@/lib/hooks/use-property-id';
@@ -258,6 +262,26 @@ function KpiCard({
   );
 }
 
+// ---- Helpers ----
+
+function platformLabel(platform: string): string {
+  const labels: Record<string, string> = {
+    google: 'Google',
+    booking_com: 'Booking.com',
+    tripadvisor: 'TripAdvisor',
+    airbnb: 'Airbnb',
+    other: 'Другое',
+  };
+  return labels[platform] || platform;
+}
+
+const PLATFORM_OPTIONS = [
+  { value: 'google', label: 'Google' },
+  { value: 'booking_com', label: 'Booking.com' },
+  { value: 'tripadvisor', label: 'TripAdvisor' },
+  { value: 'airbnb', label: 'Airbnb' },
+];
+
 // ---- Main Page ----
 
 export default function AnalyticsPage() {
@@ -265,6 +289,15 @@ export default function AnalyticsPage() {
   const [period, setPeriod] = useState<PeriodKey>('30d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
+
+  // Reputation state
+  const [reputation, setReputation] = useState<ReputationOverview | null>(null);
+  const [reputationLoading, setReputationLoading] = useState(false);
+  const [showReputationModal, setShowReputationModal] = useState(false);
+  const [repPlatform, setRepPlatform] = useState('google');
+  const [repScore, setRepScore] = useState('');
+  const [repReviewCount, setRepReviewCount] = useState('');
+  const [repSaving, setRepSaving] = useState(false);
 
   const { dateFrom, dateTo, compareDateFrom, compareDateTo } = useMemo(() => {
     const now = new Date();
@@ -352,6 +385,45 @@ export default function AnalyticsPage() {
       toast.error('Ошибка при экспорте');
     }
   }, [dateFrom, dateTo]);
+
+  // ---- Reputation ----
+  const loadReputation = useCallback(async () => {
+    if (!propertyId) return;
+    setReputationLoading(true);
+    try {
+      const data = await getReputation(propertyId);
+      setReputation(data);
+    } catch {
+      // silently ignore — widget will show "no data"
+    } finally {
+      setReputationLoading(false);
+    }
+  }, [propertyId]);
+
+  useEffect(() => {
+    loadReputation();
+  }, [loadReputation]);
+
+  const handleReputationSave = useCallback(async () => {
+    if (!repScore) return;
+    setRepSaving(true);
+    try {
+      await upsertScore({
+        platform: repPlatform,
+        score: parseFloat(repScore),
+        review_count: parseInt(repReviewCount, 10) || 0,
+      });
+      toast.success('Рейтинг обновлён');
+      setShowReputationModal(false);
+      setRepScore('');
+      setRepReviewCount('');
+      await loadReputation();
+    } catch {
+      toast.error('Ошибка при сохранении');
+    } finally {
+      setRepSaving(false);
+    }
+  }, [repPlatform, repScore, repReviewCount, loadReputation]);
 
   // Compute deltas
   const occupancyDelta = summary?.compare?.occupancyRate !== undefined
@@ -559,9 +631,107 @@ export default function AnalyticsPage() {
                 </div>
               )}
             </div>
+
+            {/* ── Reputation Widget ─────────────────────────────────── */}
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider">Репутация</h3>
+                <button
+                  onClick={() => setShowReputationModal(true)}
+                  className="text-xs text-sardoba-gold hover:text-sardoba-gold-dark"
+                >
+                  Обновить
+                </button>
+              </div>
+
+              {reputationLoading ? (
+                <div className="flex justify-center py-8"><Spinner /></div>
+              ) : reputation ? (
+                <>
+                  {/* Average score */}
+                  <div className="text-center mb-4">
+                    <div className="text-4xl font-bold text-sardoba-gold">{reputation.averageScore.toFixed(1)}</div>
+                    <div className="flex items-center justify-center gap-1 mt-1">
+                      {[1,2,3,4,5].map(s => (
+                        <svg key={s} width="16" height="16" viewBox="0 0 24 24" fill={s <= Math.round(reputation.averageScore) ? '#D4A843' : 'none'} stroke="#D4A843" strokeWidth="1.5">
+                          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                        </svg>
+                      ))}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">{reputation.totalReviews} отзывов</p>
+                  </div>
+
+                  {/* Platform scores */}
+                  <div className="space-y-3">
+                    {reputation.scores.map(score => (
+                      <div key={score.id} className="flex items-center justify-between">
+                        <span className="text-sm text-gray-700 capitalize">{platformLabel(score.platform)}</span>
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-sardoba-gold rounded-full"
+                              style={{ width: `${(score.score / 10) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-sm font-medium w-8 text-right">{score.score}</span>
+                          <span className="text-xs text-gray-400">({score.reviewCount})</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-4">Нет данных о рейтинге</p>
+              )}
+            </div>
           </div>
         </>
       )}
+
+      {/* ── Reputation Update Modal ──────────────────────────── */}
+      <Modal
+        open={showReputationModal}
+        onClose={() => setShowReputationModal(false)}
+        title="Обновить рейтинг"
+        size="sm"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowReputationModal(false)}>
+              Отмена
+            </Button>
+            <Button onClick={handleReputationSave} loading={repSaving}>
+              Сохранить
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Select
+            label="Платформа"
+            options={PLATFORM_OPTIONS}
+            value={repPlatform}
+            onChange={(e) => setRepPlatform(e.target.value)}
+          />
+          <Input
+            label="Оценка"
+            type="number"
+            step="0.1"
+            min="0"
+            max="10"
+            value={repScore}
+            onChange={(e) => setRepScore(e.target.value)}
+            placeholder="Например: 8.5"
+          />
+          <Input
+            label="Количество отзывов"
+            type="number"
+            min="0"
+            value={repReviewCount}
+            onChange={(e) => setRepReviewCount(e.target.value)}
+            placeholder="Например: 120"
+          />
+        </div>
+      </Modal>
     </div>
   );
 }

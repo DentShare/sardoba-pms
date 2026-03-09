@@ -28,6 +28,7 @@ export default function GuestsPage() {
   const [showOvir, setShowOvir] = useState(false);
   const [ovirFrom, setOvirFrom] = useState('');
   const [ovirTo, setOvirTo] = useState('');
+  const [blacklistFilter, setBlacklistFilter] = useState<boolean | undefined>(undefined);
 
   // New guest form
   const [firstName, setFirstName] = useState('');
@@ -44,8 +45,9 @@ export default function GuestsPage() {
       search: search || undefined,
       page,
       perPage: 20,
+      isBlacklisted: blacklistFilter,
     }),
-    [search, page],
+    [search, page, blacklistFilter],
   );
 
   const { data, isLoading } = useGuests(filters);
@@ -112,13 +114,19 @@ export default function GuestsPage() {
         key: 'name',
         header: 'Имя',
         render: (g) => (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {g.isBlacklisted && (
+              <span className="w-2 h-2 rounded-full bg-red-500 shrink-0" title="В чёрном списке" />
+            )}
             <span className="font-medium text-gray-900">
               {g.firstName} {g.lastName}
             </span>
             {g.isVip && (
               <Badge variant="gold" size="sm">VIP</Badge>
             )}
+            {g.tags && g.tags.length > 0 && g.tags.map((tag) => (
+              <Badge key={tag} variant="info" size="sm">{tag}</Badge>
+            ))}
           </div>
         ),
       },
@@ -189,8 +197,8 @@ export default function GuestsPage() {
         }
       />
 
-      {/* Search */}
-      <div className="mb-4">
+      {/* Search + Filters */}
+      <div className="mb-4 space-y-3">
         <Input
           value={search}
           onChange={(e) => {
@@ -204,6 +212,36 @@ export default function GuestsPage() {
             </svg>
           }
         />
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setBlacklistFilter(undefined);
+              setPage(1);
+            }}
+            className={cn(
+              'px-3 py-1.5 text-sm rounded-lg border transition-colors',
+              blacklistFilter === undefined
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300',
+            )}
+          >
+            Все
+          </button>
+          <button
+            onClick={() => {
+              setBlacklistFilter(true);
+              setPage(1);
+            }}
+            className={cn(
+              'px-3 py-1.5 text-sm rounded-lg border transition-colors',
+              blacklistFilter === true
+                ? 'bg-red-600 text-white border-red-600'
+                : 'bg-white text-gray-600 border-gray-200 hover:border-red-300 hover:text-red-600',
+            )}
+          >
+            В чёрном списке
+          </button>
+        </div>
       </div>
 
       {/* Table */}

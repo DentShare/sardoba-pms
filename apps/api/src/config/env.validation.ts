@@ -84,6 +84,9 @@ export const envValidationSchema = Joi.object({
   VAPID_PUBLIC_KEY: Joi.string().allow('').default(''),
   VAPID_PRIVATE_KEY: Joi.string().allow('').default(''),
 
+  // AI — Anthropic (AGENT-08: Phase 8)
+  ANTHROPIC_API_KEY: Joi.string().allow('').default(''),
+
   // Feature flags
   FEATURE_CHANNEL_MANAGER: Joi.boolean().default(true),
   FEATURE_ONLINE_PAYMENTS: Joi.boolean().default(true),

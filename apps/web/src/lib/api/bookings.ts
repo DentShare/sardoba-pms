@@ -39,6 +39,7 @@ export interface CreateBookingDto {
   source?: string;
   source_reference?: string;
   notes?: string;
+  promo_code?: string;
 }
 
 export interface UpdateBookingDto {
@@ -200,5 +201,61 @@ export async function getCalendar(
       },
     },
   );
+  return data;
+}
+
+// ── Flexibility (Early check-in / Late check-out) ─────────────────────────────
+
+export interface FlexibilityOptions {
+  earlyCheckin: {
+    available: boolean;
+    earliestTime?: string;
+    price?: number;
+  };
+  lateCheckout: {
+    available: boolean;
+    latestTime?: string;
+    price?: number;
+  };
+}
+
+export async function getFlexibilityOptions(bookingId: number): Promise<FlexibilityOptions> {
+  const { data } = await api.get<FlexibilityOptions>(
+    `/bookings/${bookingId}/flexibility-options`,
+  );
+  return data;
+}
+
+export async function setEarlyCheckin(
+  bookingId: number,
+  time: string,
+  price: number,
+): Promise<Booking> {
+  const { data } = await api.post<Booking>(`/bookings/${bookingId}/early-checkin`, {
+    time,
+    price,
+  });
+  return data;
+}
+
+export async function removeEarlyCheckin(bookingId: number): Promise<Booking> {
+  const { data } = await api.delete<Booking>(`/bookings/${bookingId}/early-checkin`);
+  return data;
+}
+
+export async function setLateCheckout(
+  bookingId: number,
+  time: string,
+  price: number,
+): Promise<Booking> {
+  const { data } = await api.post<Booking>(`/bookings/${bookingId}/late-checkout`, {
+    time,
+    price,
+  });
+  return data;
+}
+
+export async function removeLateCheckout(bookingId: number): Promise<Booking> {
+  const { data } = await api.delete<Booking>(`/bookings/${bookingId}/late-checkout`);
   return data;
 }

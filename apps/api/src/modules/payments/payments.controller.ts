@@ -26,8 +26,10 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { PaymentsService } from './payments.service';
 import { PaymeService } from './payme.service';
+import { PaymeQrService } from './payme-qr.service';
 import { ClickService } from './click.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { GeneratePaymeQrDto } from './dto/generate-payme-qr.dto';
 
 /**
  * Request interface extending Express Request with JWT user payload.
@@ -48,6 +50,7 @@ export class PaymentsController {
   constructor(
     private readonly paymentsService: PaymentsService,
     private readonly paymeService: PaymeService,
+    private readonly paymeQrService: PaymeQrService,
     private readonly clickService: ClickService,
   ) {}
 
@@ -109,6 +112,46 @@ export class PaymentsController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.paymentsService.remove(id, req.user.sub, req.user.propertyId);
+  }
+
+  // ── POST /v1/payments/payme-qr ──────────────────────────────────────────
+
+  @Post('payments/payme-qr')
+  @HttpCode(HttpStatus.OK)
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Generate Payme checkout URL for QR code payment' })
+  @ApiResponse({ status: 200, description: 'Checkout URL generated' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN (insufficient role)' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND (booking)' })
+  @ApiResponse({ status: 422, description: 'VALIDATION_FAILED (fully paid, cancelled, etc.)' })
+  async generatePaymeQr(
+    @Body() dto: GeneratePaymeQrDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.paymeQrService.generateCheckoutUrl(
+      dto.bookingId,
+      req.user.propertyId,
+      dto.amount,
+    );
+  }
+
+  // ── GET /v1/payments/payme-qr/:bookingId/status ───────────────────────
+
+  @Get('payments/payme-qr/:bookingId/status')
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get Payme payment status for a booking' })
+  @ApiParam({ name: 'bookingId', type: Number })
+  @ApiResponse({ status: 200, description: 'Payment status' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND (booking)' })
+  async getPaymeQrStatus(
+    @Param('bookingId', ParseIntPipe) bookingId: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.paymeQrService.getPaymentStatus(bookingId, req.user.propertyId);
   }
 
   // ── POST /v1/webhooks/payme ──────────────────────────────────────────────

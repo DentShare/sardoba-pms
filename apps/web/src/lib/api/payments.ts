@@ -46,3 +46,32 @@ export async function createPayment(dto: CreatePaymentDto): Promise<Payment> {
 export async function deletePayment(id: number): Promise<void> {
   await api.delete(`/payments/${id}`);
 }
+
+// ── Payme QR ──────────────────────────────────────────────────────────────────
+
+export interface PaymeQrResponse {
+  qrUrl: string;
+  checkoutUrl: string;
+  amount: number;
+  bookingId: number;
+}
+
+export async function generatePaymeQr(
+  bookingId: number,
+  amount: number,
+): Promise<PaymeQrResponse> {
+  const { data } = await api.post<PaymeQrResponse>('/payments/payme-qr', {
+    booking_id: bookingId,
+    amount,
+  });
+  return data;
+}
+
+export async function getPaymeQrStatus(
+  bookingId: number,
+): Promise<{ status: string; paid: boolean }> {
+  const { data } = await api.get<{ status: string; paid: boolean }>(
+    `/payments/payme-qr/${bookingId}/status`,
+  );
+  return data;
+}

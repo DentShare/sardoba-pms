@@ -33,6 +33,15 @@ const ERROR_HTTP_MAP: Record<ErrorCode, number> = {
   [ErrorCode.GUEST_NOT_FOUND]: 404,
   [ErrorCode.GUEST_DUPLICATE_PHONE]: 409,
 
+  // Promo Code errors
+  [ErrorCode.PROMO_CODE_INVALID]: 400,
+  [ErrorCode.PROMO_CODE_EXPIRED]: 400,
+  [ErrorCode.PROMO_CODE_MAX_USES]: 400,
+  [ErrorCode.PROMO_CODE_MIN_AMOUNT]: 400,
+
+  // Min nights
+  [ErrorCode.MIN_NIGHTS_VIOLATION]: 400,
+
   // 409 Conflict
   [ErrorCode.ROOM_NOT_AVAILABLE]: 409,
   [ErrorCode.OVERBOOKING_DETECTED]: 409,
@@ -58,6 +67,7 @@ const ERROR_HTTP_MAP: Record<ErrorCode, number> = {
   // 503 Service Unavailable
   [ErrorCode.CHANNEL_NOT_CONFIGURED]: 503,
   [ErrorCode.SERVICE_UNAVAILABLE]: 503,
+  [ErrorCode.AI_SERVICE_UNAVAILABLE]: 503,
 
   // Group Booking
   [ErrorCode.GROUP_INVALID_STATUS]: 422,

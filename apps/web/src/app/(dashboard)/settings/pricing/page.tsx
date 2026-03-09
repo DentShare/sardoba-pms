@@ -1,15 +1,29 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Badge } from '@/components/ui/Badge';
+import { Modal } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/layout/PageHeader';
 import { Spinner } from '@/components/ui/Spinner';
 import { usePropertyId } from '@/lib/hooks/use-property-id';
 import { api } from '@/lib/api';
+import {
+  listMinNightsRules,
+  createMinNightsRule,
+  deleteMinNightsRule,
+  type MinNightsRule,
+} from '@/lib/api/rates';
+import {
+  listHolidays,
+  createHoliday,
+  deleteHoliday,
+  seedHolidays,
+  type HolidayRule,
+} from '@/lib/api/holidays';
 
 interface PricingRule {
   id: string;
@@ -88,9 +102,52 @@ export default function PricingSettingsPage() {
     priority: 10,
   });
 
-  useEffect(() => {
-    if (propertyId) loadRules();
+  // ── Min Nights Rules state ──────────────────────────────────────────────
+  const [minNightsRules, setMinNightsRules] = useState<MinNightsRule[]>([]);
+  const [showMinNightsModal, setShowMinNightsModal] = useState(false);
+  const [mnDateFrom, setMnDateFrom] = useState('');
+  const [mnDateTo, setMnDateTo] = useState('');
+  const [mnMinNights, setMnMinNights] = useState('2');
+
+  // ── Holidays state ──────────────────────────────────────────────────────
+  const [holidays, setHolidays] = useState<HolidayRule[]>([]);
+  const [showHolidayModal, setShowHolidayModal] = useState(false);
+  const [hlName, setHlName] = useState('');
+  const [hlDateFrom, setHlDateFrom] = useState('');
+  const [hlDateTo, setHlDateTo] = useState('');
+  const [hlBoostPercent, setHlBoostPercent] = useState('20');
+  const [hlMinNights, setHlMinNights] = useState('1');
+  const [hlRecurYearly, setHlRecurYearly] = useState(true);
+
+  // ── Load min nights rules ──────────────────────────────────────────────
+  const loadMinNightsRules = useCallback(async () => {
+    if (!propertyId) return;
+    try {
+      const data = await listMinNightsRules(propertyId);
+      setMinNightsRules(data);
+    } catch {
+      /* silent */
+    }
   }, [propertyId]);
+
+  // ── Load holidays ──────────────────────────────────────────────────────
+  const loadHolidays = useCallback(async () => {
+    if (!propertyId) return;
+    try {
+      const data = await listHolidays(propertyId);
+      setHolidays(data);
+    } catch {
+      /* silent */
+    }
+  }, [propertyId]);
+
+  useEffect(() => {
+    if (propertyId) {
+      loadRules();
+      loadMinNightsRules();
+      loadHolidays();
+    }
+  }, [propertyId, loadMinNightsRules, loadHolidays]);
 
   const loadRules = async () => {
     try {
@@ -180,6 +237,85 @@ export default function PricingSettingsPage() {
       loadRules();
     } catch {
       toast.error('Ошибка');
+    }
+  };
+
+  // ── Min Nights handlers ────────────────────────────────────────────────
+  const handleCreateMinNightsRule = async () => {
+    if (!mnDateFrom || !mnDateTo || !mnMinNights) return;
+    try {
+      await createMinNightsRule({
+        date_from: mnDateFrom,
+        date_to: mnDateTo,
+        min_nights: Number(mnMinNights),
+      });
+      toast.success('Правило создано');
+      setShowMinNightsModal(false);
+      setMnDateFrom('');
+      setMnDateTo('');
+      setMnMinNights('2');
+      loadMinNightsRules();
+    } catch {
+      toast.error('Ошибка создания');
+    }
+  };
+
+  const handleDeleteMinNightsRule = async (id: number) => {
+    if (!confirm('Удалить правило?')) return;
+    try {
+      await deleteMinNightsRule(id);
+      toast.success('Удалено');
+      loadMinNightsRules();
+    } catch {
+      toast.error('Ошибка удаления');
+    }
+  };
+
+  // ── Holiday handlers ───────────────────────────────────────────────────
+  const handleCreateHoliday = async () => {
+    if (!hlName.trim() || !hlDateFrom || !hlDateTo) return;
+    try {
+      await createHoliday({
+        name: hlName.trim(),
+        date_from: hlDateFrom,
+        date_to: hlDateTo,
+        price_boost_percent: Number(hlBoostPercent),
+        min_nights: Number(hlMinNights) || undefined,
+        recur_yearly: hlRecurYearly,
+      });
+      toast.success('Праздник добавлен');
+      setShowHolidayModal(false);
+      setHlName('');
+      setHlDateFrom('');
+      setHlDateTo('');
+      setHlBoostPercent('20');
+      setHlMinNights('1');
+      setHlRecurYearly(true);
+      loadHolidays();
+    } catch {
+      toast.error('Ошибка создания');
+    }
+  };
+
+  const handleDeleteHoliday = async (id: number) => {
+    if (!confirm('Удалить праздник?')) return;
+    try {
+      await deleteHoliday(id);
+      toast.success('Удалено');
+      loadHolidays();
+    } catch {
+      toast.error('Ошибка удаления');
+    }
+  };
+
+  const handleSeedHolidays = async () => {
+    if (!propertyId) return;
+    try {
+      await seedHolidays(propertyId);
+      toast.success('Шаблон праздников загружен');
+      loadHolidays();
+    } catch {
+      toast.error('Ошибка загрузки шаблона');
     }
   };
 
@@ -400,6 +536,210 @@ export default function PricingSettingsPage() {
           </a>
         </div>
       )}
+
+      {/* ── Min Nights Rules ──────────────────────────────────────────────── */}
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Минимальное количество ночей</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Правила минимального срока проживания по датам</p>
+          </div>
+          <Button size="sm" onClick={() => setShowMinNightsModal(true)}>
+            + Правило
+          </Button>
+        </div>
+
+        {minNightsRules.length === 0 ? (
+          <div className="text-center py-8 bg-white rounded-xl border border-gray-200">
+            <p className="text-gray-500">Нет правил минимального срока</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {minNightsRules.map((rule) => (
+              <div
+                key={rule.id}
+                className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-gray-900">
+                      {rule.dateFrom} — {rule.dateTo}
+                    </span>
+                    <Badge variant="info">мин. {rule.minNights} ночей</Badge>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {rule.appliesToRooms && rule.appliesToRooms.length > 0
+                      ? `Номера: ${rule.appliesToRooms.join(', ')}`
+                      : 'Все номера'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDeleteMinNightsRule(rule.id)}
+                  className="text-sm text-red-500 hover:text-red-700 ml-4"
+                >
+                  Удалить
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Min Nights Modal */}
+      <Modal
+        open={showMinNightsModal}
+        onClose={() => setShowMinNightsModal(false)}
+        title="Новое правило мин. ночей"
+      >
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Дата от"
+              type="date"
+              value={mnDateFrom}
+              onChange={(e) => setMnDateFrom(e.target.value)}
+            />
+            <Input
+              label="Дата до"
+              type="date"
+              value={mnDateTo}
+              onChange={(e) => setMnDateTo(e.target.value)}
+            />
+          </div>
+          <Input
+            label="Минимум ночей"
+            type="number"
+            value={mnMinNights}
+            onChange={(e) => setMnMinNights(e.target.value)}
+            min={1}
+          />
+          <div className="flex gap-2 pt-2">
+            <Button onClick={handleCreateMinNightsRule}>Создать</Button>
+            <Button variant="secondary" onClick={() => setShowMinNightsModal(false)}>
+              Отмена
+            </Button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* ── Holiday Calendar ──────────────────────────────────────────────── */}
+      <div className="mt-10">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Праздничный календарь</h2>
+            <p className="text-sm text-gray-500 mt-0.5">Наценки и мин. ночи на праздничные даты</p>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant="secondary" onClick={handleSeedHolidays}>
+              Заполнить шаблон
+            </Button>
+            <Button size="sm" onClick={() => setShowHolidayModal(true)}>
+              + Добавить
+            </Button>
+          </div>
+        </div>
+
+        {holidays.length === 0 ? (
+          <div className="text-center py-8 bg-white rounded-xl border border-gray-200">
+            <p className="text-gray-500">Нет праздников</p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {holidays.map((h) => (
+              <div
+                key={h.id}
+                className="bg-white rounded-xl border border-gray-200 p-4 flex items-center justify-between"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-gray-900">{h.name}</span>
+                    <Badge variant="warning">+{h.priceBoostPercent}%</Badge>
+                    {h.minNights > 1 && (
+                      <Badge variant="info">мин. {h.minNights} ночей</Badge>
+                    )}
+                    {h.recurYearly && (
+                      <Badge variant="default">ежегодный</Badge>
+                    )}
+                    <Badge variant={h.isActive ? 'success' : 'default'}>
+                      {h.isActive ? 'Активен' : 'Выкл'}
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {h.dateFrom} — {h.dateTo}
+                  </p>
+                </div>
+                <button
+                  onClick={() => handleDeleteHoliday(h.id)}
+                  className="text-sm text-red-500 hover:text-red-700 ml-4"
+                >
+                  Удалить
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Holiday Modal */}
+      <Modal
+        open={showHolidayModal}
+        onClose={() => setShowHolidayModal(false)}
+        title="Добавить праздник"
+      >
+        <div className="space-y-4">
+          <Input
+            label="Название"
+            value={hlName}
+            onChange={(e) => setHlName(e.target.value)}
+            placeholder="Навруз"
+          />
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Дата от"
+              type="date"
+              value={hlDateFrom}
+              onChange={(e) => setHlDateFrom(e.target.value)}
+            />
+            <Input
+              label="Дата до"
+              type="date"
+              value={hlDateTo}
+              onChange={(e) => setHlDateTo(e.target.value)}
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Наценка, %"
+              type="number"
+              value={hlBoostPercent}
+              onChange={(e) => setHlBoostPercent(e.target.value)}
+              min={0}
+            />
+            <Input
+              label="Мин. ночей"
+              type="number"
+              value={hlMinNights}
+              onChange={(e) => setHlMinNights(e.target.value)}
+              min={1}
+            />
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hlRecurYearly}
+              onChange={(e) => setHlRecurYearly(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+            />
+            <span className="text-sm text-gray-700">Повторять ежегодно</span>
+          </label>
+          <div className="flex gap-2 pt-2">
+            <Button onClick={handleCreateHoliday}>Создать</Button>
+            <Button variant="secondary" onClick={() => setShowHolidayModal(false)}>
+              Отмена
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

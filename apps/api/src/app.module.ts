@@ -27,7 +27,13 @@ import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { UploadModule } from './modules/uploads/upload.module';
 import { CacheModule } from './modules/cache/cache.module';
+import { AiModule } from './modules/ai/ai.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { PromoCodesModule } from './modules/promo-codes/promo-codes.module';
+import { HolidayCalendarModule } from './modules/holiday-calendar/holiday-calendar.module';
+import { ReputationModule } from './modules/reputation/reputation.module';
+import { ReferralsModule } from './modules/referrals/referrals.module';
+import { InvoicesModule } from './modules/invoices/invoices.module';
 
 /**
  * Conditionally include a module based on an environment variable.
@@ -98,7 +104,13 @@ function featureModule(
     MessagingModule,
     UploadModule,
     CacheModule,
+    AiModule,
     AdminModule,
+    PromoCodesModule,
+    HolidayCalendarModule,
+    ReputationModule,
+    ReferralsModule,
+    InvoicesModule,
 
     // ── Feature-flagged modules ──────────────────────────────────────────
     ...featureModule('FEATURE_CHANNEL_MANAGER', ChannelModule),

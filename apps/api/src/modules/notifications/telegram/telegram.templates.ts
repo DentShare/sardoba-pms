@@ -408,6 +408,123 @@ export function housekeepingDailyReportTemplate(data: {
   return lines.join('\n');
 }
 
+// ── Phase 5: Automated Notification Templates ──────────────────────────────
+
+/**
+ * Booking confirmed fallback template (Telegram).
+ * Used when WhatsApp delivery fails for Feature #2.
+ */
+export function bookingConfirmedFallbackTemplate(data: {
+  bookingNumber: string;
+  guestName: string;
+  guestPhone: string;
+  roomName: string;
+  checkIn: string;
+  checkOut: string;
+  checkinTime: string;
+  checkoutTime: string;
+  propertyName: string;
+}): string {
+  return [
+    `<b>✅ Бронь подтверждена — WhatsApp не доставлен</b>`,
+    ``,
+    `<b>Бронь:</b> #${escapeHtml(data.bookingNumber)}`,
+    `<b>Гость:</b> ${escapeHtml(data.guestName)}`,
+    data.guestPhone ? `<b>Тел:</b> ${escapeHtml(data.guestPhone)}` : null,
+    `<b>Номер:</b> ${escapeHtml(data.roomName)}`,
+    `<b>Заезд:</b> ${data.checkIn} (с ${data.checkinTime})`,
+    `<b>Выезд:</b> ${data.checkOut} (до ${data.checkoutTime})`,
+    `<b>Отель:</b> ${escapeHtml(data.propertyName)}`,
+    ``,
+    `<i>WhatsApp сообщение гостю не доставлено. Рекомендуем связаться вручную.</i>`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Upsell pre-arrival fallback template (Telegram).
+ * Used when WhatsApp delivery fails for Feature #4.
+ */
+export function upsellPreArrivalFallbackTemplate(data: {
+  bookingNumber: string;
+  guestName: string;
+  guestPhone: string;
+  roomName: string;
+  checkinTime: string;
+  extrasList: string;
+  propertyName: string;
+}): string {
+  return [
+    `<b>🌟 Upsell — WhatsApp не доставлен</b>`,
+    ``,
+    `<b>Бронь:</b> #${escapeHtml(data.bookingNumber)}`,
+    `<b>Гость:</b> ${escapeHtml(data.guestName)}`,
+    data.guestPhone ? `<b>Тел:</b> ${escapeHtml(data.guestPhone)}` : null,
+    `<b>Номер:</b> ${escapeHtml(data.roomName)}`,
+    `<b>Заезд завтра в</b> ${data.checkinTime}`,
+    ``,
+    `<b>Доп. услуги для предложения:</b>`,
+    escapeHtml(data.extrasList),
+    ``,
+    `<i>WhatsApp сообщение гостю не доставлено. Рекомендуем предложить услуги при заезде.</i>`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Review request fallback template (Telegram).
+ * Used when WhatsApp delivery fails for Feature #5.
+ */
+export function reviewRequestFallbackTemplate(data: {
+  bookingNumber: string;
+  guestName: string;
+  guestPhone: string;
+  propertyName: string;
+  reviewLinks: string;
+}): string {
+  return [
+    `<b>🙏 Запрос отзыва — WhatsApp не доставлен</b>`,
+    ``,
+    `<b>Бронь:</b> #${escapeHtml(data.bookingNumber)}`,
+    `<b>Гость:</b> ${escapeHtml(data.guestName)}`,
+    data.guestPhone ? `<b>Тел:</b> ${escapeHtml(data.guestPhone)}` : null,
+    `<b>Отель:</b> ${escapeHtml(data.propertyName)}`,
+    ``,
+    `<b>Ссылки для отзыва:</b>`,
+    escapeHtml(data.reviewLinks),
+    ``,
+    `<i>WhatsApp сообщение гостю не доставлено. Рекомендуем отправить ссылку вручную.</i>`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Birthday alert template (Telegram).
+ * Sent to property owner 3 days before guest's birthday. Feature #10.
+ */
+export function birthdayAlertTemplate(data: {
+  firstName: string;
+  lastName: string;
+  birthday: string;
+  phone: string;
+  visitCount: number;
+  lastVisit: string;
+}): string {
+  return [
+    `<b>🎂 День рождения гостя через 3 дня!</b>`,
+    ``,
+    `<b>👤</b> ${escapeHtml(data.firstName)} ${escapeHtml(data.lastName)}`,
+    `<b>📅 Дата рождения:</b> ${data.birthday}`,
+    `<b>📞</b> ${escapeHtml(data.phone)}`,
+    `<b>🏨 Был у вас:</b> ${data.visitCount} раз (последний: ${data.lastVisit})`,
+    ``,
+    `<b>💡 Идеи:</b> поздравить по WhatsApp, приготовить сюрприз при заезде`,
+  ].join('\n');
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /**

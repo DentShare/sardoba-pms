@@ -17,6 +17,9 @@ export interface Property {
   timezone: string;
   cover_photo: string | null;
   booking_enabled: boolean;
+  google_review_url: string | null;
+  tripadvisor_url: string | null;
+  booking_com_review_url: string | null;
 }
 
 export interface UpdatePropertyDto {
@@ -33,6 +36,9 @@ export interface UpdatePropertyDto {
   timezone?: string;
   cover_photo?: string | null;
   booking_enabled?: boolean;
+  google_review_url?: string | null;
+  tripadvisor_url?: string | null;
+  booking_com_review_url?: string | null;
 }
 
 /* ── API calls ───────────────────────────────────────────────────────────── */

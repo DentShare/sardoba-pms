@@ -23,6 +23,7 @@ import { PublicBookingDto } from './dto/public-booking.dto';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CalculatePriceDto } from './dto/calculate-price.dto';
 import { TrackWidgetEventDto } from './dto/track-event.dto';
+import { PublicValidatePromoDto } from './dto/public-validate-promo.dto';
 
 /**
  * Public booking endpoints - NO authentication required.
@@ -178,6 +179,29 @@ export class PublicBookingController {
     @Param('bookingNumber') bookingNumber: string,
   ) {
     return this.publicBookingService.getPaymentInfo(slug, bookingNumber);
+  }
+
+  // ── POST /v1/book/:slug/validate-promo ──────────────────────────────────
+
+  @Post(':slug/validate-promo')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Validate a promo code for public booking',
+    description:
+      'Checks if a promo code is valid for the given booking parameters and returns ' +
+      'the calculated discount. No authentication required.',
+  })
+  @ApiParam({ name: 'slug', type: String, description: 'Hotel URL slug' })
+  @ApiResponse({
+    status: 200,
+    description: 'Validation result with discount amount',
+  })
+  @ApiResponse({ status: 404, description: 'Hotel not found or booking disabled' })
+  async validatePromoCode(
+    @Param('slug') slug: string,
+    @Body() dto: PublicValidatePromoDto,
+  ) {
+    return this.publicBookingService.validatePromoCode(slug, dto);
   }
 
   // ── POST /v1/book/:slug/events ──────────────────────────────────────────

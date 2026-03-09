@@ -1,4 +1,4 @@
-import { IsInt, IsOptional, IsString, IsBoolean, Min, Max } from 'class-validator';
+import { IsInt, IsOptional, IsString, IsBoolean, Min, Max, MaxLength } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform, Type } from 'class-transformer';
 
@@ -38,4 +38,27 @@ export class GuestFilterDto {
     return value;
   })
   is_vip?: boolean;
+
+  @ApiPropertyOptional({
+    example: true,
+    description: 'Filter by blacklist status',
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }) => {
+    if (value === 'true') return true;
+    if (value === 'false') return false;
+    return value;
+  })
+  is_blacklisted?: boolean;
+
+  @ApiPropertyOptional({
+    example: 'corporate',
+    description: 'Filter by tag (exact match)',
+    maxLength: 50,
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  tag?: string;
 }

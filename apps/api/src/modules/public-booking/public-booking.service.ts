@@ -18,8 +18,10 @@ import { AvailabilityService } from '../bookings/availability.service';
 import { BookingNumberService } from '../bookings/booking-number.service';
 import { RatesService } from '../rates/rates.service';
 import { GuestsService } from '../guests/guests.service';
+import { PromoCodesService } from '../promo-codes/promo-codes.service';
 import { BookingCreatedEvent } from '../bookings/events/booking-created.event';
 import { PublicBookingDto, ExtraSelectionDto } from './dto/public-booking.dto';
+import { PublicValidatePromoDto } from './dto/public-validate-promo.dto';
 
 /** System user ID for public (unauthenticated) bookings */
 const SYSTEM_USER_ID = 0;
@@ -46,6 +48,7 @@ export class PublicBookingService {
     private readonly bookingNumberService: BookingNumberService,
     private readonly ratesService: RatesService,
     private readonly guestsService: GuestsService,
+    private readonly promoCodesService: PromoCodesService,
     private readonly dataSource: DataSource,
     private readonly eventEmitter: EventEmitter2,
   ) {}
@@ -446,7 +449,32 @@ export class PublicBookingService {
       }
     }
 
-    const totalAmount = roomTotal + extrasTotal;
+    const subtotal = roomTotal + extrasTotal;
+
+    // Apply promo code if provided
+    let discountAmount = 0;
+    let promoCodeId: number | null = null;
+
+    if (dto.promo_code) {
+      const promoResult = await this.promoCodesService.validate(property.id, {
+        code: dto.promo_code,
+        bookingAmount: subtotal,
+        nights,
+        roomId: dto.room_id,
+      });
+
+      if (promoResult.valid) {
+        discountAmount = promoResult.discount;
+        const promoCode = await this.promoCodesService.findByCode(
+          property.id,
+          dto.promo_code,
+        );
+        promoCodeId = promoCode?.id ?? null;
+      }
+      // If promo code is invalid, we silently skip it (guest sees result via validate-promo)
+    }
+
+    const totalAmount = subtotal - discountAmount;
 
     // Create booking + extras in a single transaction
     const savedBooking = await this.dataSource.transaction(async (manager) => {
@@ -468,6 +496,8 @@ export class PublicBookingService {
         children: dto.children ?? 0,
         totalAmount,
         paidAmount: 0,
+        discountAmount,
+        promoCodeId,
         status: 'new' as BookingStatus,
         source: 'website',
         sourceReference: null,
@@ -491,6 +521,11 @@ export class PublicBookingService {
 
       return saved;
     });
+
+    // Increment promo code usage after successful booking
+    if (promoCodeId) {
+      await this.promoCodesService.incrementUsage(promoCodeId);
+    }
 
     this.logger.log(
       `Public booking created: ${savedBooking.bookingNumber} for property ${property.name} (${property.id})`,
@@ -524,6 +559,8 @@ export class PublicBookingService {
       adults: savedBooking.adults,
       children: savedBooking.children,
       total_amount: Number(savedBooking.totalAmount),
+      discount_amount: discountAmount,
+      promo_code: dto.promo_code ? dto.promo_code.trim().toUpperCase() : null,
       currency: property.currency,
       guest: {
         first_name: dto.first_name,
@@ -716,6 +753,23 @@ export class PublicBookingService {
       fully_paid: balance <= 0,
       methods,
     };
+  }
+
+  // ── validatePromoCode ──────────────────────────────────────────────────────
+
+  /**
+   * Validate a promo code from the public booking page.
+   * Finds property by slug, then delegates to PromoCodesService.
+   */
+  async validatePromoCode(slug: string, dto: PublicValidatePromoDto) {
+    const property = await this.findPropertyBySlug(slug);
+
+    return this.promoCodesService.validate(property.id, {
+      code: dto.code,
+      bookingAmount: dto.booking_amount,
+      nights: dto.nights,
+      roomId: dto.room_id,
+    });
   }
 
   // ── trackWidgetEvent ────────────────────────────────────────────────────────

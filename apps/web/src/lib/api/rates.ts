@@ -84,3 +84,54 @@ export async function calculateRate(
   );
   return data;
 }
+
+// ── Min Nights Rules ──────────────────────────────────────────────────────────
+
+export interface MinNightsRule {
+  id: number;
+  propertyId: number;
+  dateFrom: string;
+  dateTo: string;
+  minNights: number;
+  appliesToRooms: number[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateMinNightsRuleDto {
+  date_from: string;
+  date_to: string;
+  min_nights: number;
+  applies_to_rooms?: number[];
+  is_active?: boolean;
+}
+
+export async function listMinNightsRules(propertyId: number): Promise<MinNightsRule[]> {
+  const { data } = await api.get('/rates/min-nights-rules', {
+    params: { property_id: propertyId },
+  });
+  return Array.isArray(data) ? data : data?.data ?? [];
+}
+
+export async function createMinNightsRule(
+  dto: CreateMinNightsRuleDto,
+): Promise<MinNightsRule> {
+  const { data } = await api.post<MinNightsRule>('/rates/min-nights-rules', dto);
+  return data;
+}
+
+export async function updateMinNightsRule(
+  id: number,
+  dto: Partial<CreateMinNightsRuleDto>,
+): Promise<MinNightsRule> {
+  const { data } = await api.patch<MinNightsRule>(
+    `/rates/min-nights-rules/${id}`,
+    dto,
+  );
+  return data;
+}
+
+export async function deleteMinNightsRule(id: number): Promise<void> {
+  await api.delete(`/rates/min-nights-rules/${id}`);
+}

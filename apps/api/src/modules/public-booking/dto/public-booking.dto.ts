@@ -77,4 +77,9 @@ export class PublicBookingDto {
   @ValidateNested({ each: true })
   @Type(() => ExtraSelectionDto)
   extras?: ExtraSelectionDto[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  promo_code?: string;
 }

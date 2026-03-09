@@ -41,6 +41,9 @@ export class NotificationSettings {
   @Column({ type: 'boolean', name: 'event_sync_error', default: true })
   eventSyncError!: boolean;
 
+  @Column({ type: 'boolean', name: 'event_birthday', default: true })
+  eventBirthday!: boolean;
+
   @UpdateDateColumn({ type: 'timestamptz', name: 'updated_at' })
   updatedAt!: Date;
 

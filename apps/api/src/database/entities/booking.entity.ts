@@ -18,6 +18,7 @@ import { User } from './user.entity';
 import { BookingHistory } from './booking-history.entity';
 import { Payment } from './payment.entity';
 import { BookingExtra } from './booking-extra.entity';
+import { PromoCode } from './promo-code.entity';
 
 export type BookingStatus =
   | 'new'
@@ -103,6 +104,24 @@ export class Booking {
   @Column({ type: 'text', name: 'cancel_reason', nullable: true })
   cancelReason!: string | null;
 
+  @Column({ type: 'bigint', name: 'discount_amount', default: 0 })
+  discountAmount!: number;
+
+  @Column({ type: 'int', name: 'promo_code_id', nullable: true })
+  promoCodeId!: number | null;
+
+  @Column({ type: 'varchar', length: 5, name: 'early_checkin_time', nullable: true })
+  earlyCheckinTime!: string | null;
+
+  @Column({ type: 'bigint', name: 'early_checkin_price', default: 0 })
+  earlyCheckinPrice!: number;
+
+  @Column({ type: 'varchar', length: 5, name: 'late_checkout_time', nullable: true })
+  lateCheckoutTime!: string | null;
+
+  @Column({ type: 'bigint', name: 'late_checkout_price', default: 0 })
+  lateCheckoutPrice!: number;
+
   @Column({ type: 'int', name: 'created_by' })
   createdBy!: number;
 
@@ -142,4 +161,8 @@ export class Booking {
 
   @OneToMany(() => BookingExtra, (extra) => extra.booking)
   extras!: BookingExtra[];
+
+  @ManyToOne(() => PromoCode, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'promo_code_id' })
+  promoCode!: PromoCode | null;
 }

@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Param,
   Query,
@@ -26,10 +27,13 @@ import { PropertyGuard } from '@/modules/auth/guards/property.guard';
 import { RolesGuard } from '@/modules/auth/guards/roles.guard';
 import { Roles } from '@/modules/auth/decorators/roles.decorator';
 import { RatesService } from './rates.service';
+import { MinNightsService } from './min-nights.service';
 import { CreateRateDto } from './dto/create-rate.dto';
 import { UpdateRateDto } from './dto/update-rate.dto';
 import { RateQueryDto } from './dto/rate-query.dto';
 import { CalculateRateDto } from './dto/calculate-rate.dto';
+import { CreateMinNightsRuleDto } from './dto/create-min-nights-rule.dto';
+import { UpdateMinNightsRuleDto } from './dto/update-min-nights-rule.dto';
 
 /**
  * Request interface extending Express Request with JWT user payload.
@@ -47,7 +51,10 @@ interface AuthenticatedRequest {
 @ApiTags('Rates')
 @UseGuards(JwtAuthGuard, PropertyGuard)
 export class RatesController {
-  constructor(private readonly ratesService: RatesService) {}
+  constructor(
+    private readonly ratesService: RatesService,
+    private readonly minNightsService: MinNightsService,
+  ) {}
 
   // ── GET /v1/properties/:propertyId/rates ───────────────────────────────────
 
@@ -153,6 +160,74 @@ export class RatesController {
       dto.check_out,
       dto.rate_id,
     );
+  }
+
+  // ── GET /v1/rates/min-nights-rules ──────────────────────────────────────
+
+  @Get('rates/min-nights-rules')
+  @ApiOperation({ summary: 'List all min-nights rules for the property' })
+  @ApiResponse({ status: 200, description: 'List of min-nights rules' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  async listMinNightsRules(@Req() req: AuthenticatedRequest) {
+    const rules = await this.minNightsService.findAll(req.user.propertyId);
+    return { data: rules };
+  }
+
+  // ── POST /v1/rates/min-nights-rules ─────────────────────────────────────
+
+  @Post('rates/min-nights-rules')
+  @HttpCode(HttpStatus.CREATED)
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Create a new min-nights rule' })
+  @ApiResponse({ status: 201, description: 'Min-nights rule created' })
+  @ApiResponse({ status: 400, description: 'VALIDATION_ERROR or INVALID_DATE_RANGE' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN' })
+  async createMinNightsRule(
+    @Body() dto: CreateMinNightsRuleDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.minNightsService.create(req.user.propertyId, dto);
+  }
+
+  // ── PATCH /v1/rates/min-nights-rules/:id ────────────────────────────────
+
+  @Patch('rates/min-nights-rules/:id')
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Update a min-nights rule' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Min-nights rule updated' })
+  @ApiResponse({ status: 400, description: 'VALIDATION_ERROR or INVALID_DATE_RANGE' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  async updateMinNightsRule(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateMinNightsRuleDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.minNightsService.update(req.user.propertyId, id, dto);
+  }
+
+  // ── DELETE /v1/rates/min-nights-rules/:id ───────────────────────────────
+
+  @Delete('rates/min-nights-rules/:id')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @UseGuards(RolesGuard)
+  @Roles('owner', 'admin')
+  @ApiOperation({ summary: 'Delete a min-nights rule' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 204, description: 'Min-nights rule deleted' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 403, description: 'FORBIDDEN' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  async deleteMinNightsRule(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.minNightsService.remove(req.user.propertyId, id);
   }
 
   // ── Private helpers ────────────────────────────────────────────────────────

@@ -5,3 +5,4 @@ export { AddRowLevelSecurity1700000000004 } from './1700000000004-AddRowLevelSec
 export { AddWidgetPricingPwa1700000000005 } from './1700000000005-AddWidgetPricingPwa';
 export { AddHousekeepingAndGroups1700000000006 } from './1700000000006-AddHousekeepingAndGroups';
 export { AddPaymentTransactions1700000000007 } from './1700000000007-AddPaymentTransactions';
+export { AddProductFeatures1700000000008 } from './1700000000008-AddProductFeatures';

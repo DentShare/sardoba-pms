@@ -21,7 +21,21 @@ export {
   useCreateGuest,
   useUpdateGuest,
   useSearchGuests,
+  useAddGuestTags,
+  useRemoveGuestTags,
+  useBlacklistGuest,
+  useUnblacklistGuest,
+  useGuestTips,
+  usePassportOcr,
 } from './use-guests';
+
+export {
+  useFlexibilityOptions,
+  useSetEarlyCheckin,
+  useRemoveEarlyCheckin,
+  useSetLateCheckout,
+  useRemoveLateCheckout,
+} from './use-flexibility';
 
 export { useCalendar } from './use-calendar';
 

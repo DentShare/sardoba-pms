@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
@@ -19,7 +19,14 @@ import {
   useCheckoutBooking,
   useCancelBooking,
 } from '@/lib/hooks/use-bookings';
-import { listPayments, createPayment, type PaymentsResponse } from '@/lib/api/payments';
+import {
+  useSetEarlyCheckin,
+  useRemoveEarlyCheckin,
+  useSetLateCheckout,
+  useRemoveLateCheckout,
+} from '@/lib/hooks/use-flexibility';
+import { listPayments, createPayment, generatePaymeQr, getPaymeQrStatus, type PaymentsResponse } from '@/lib/api/payments';
+import { listInvoices, createInvoice, downloadInvoicePdf, type Invoice, type CreateInvoiceDto } from '@/lib/api/invoices';
 import { formatMoney } from '@/lib/utils/money';
 import { formatDate, formatDateTime, getNights } from '@/lib/utils/dates';
 import type { Payment, BookingStatus, PaymentMethod } from '@sardoba/shared';
@@ -56,6 +63,34 @@ export default function BookingDetailPage() {
   const [payMethod, setPayMethod] = useState<string>('cash');
   const [payNotes, setPayNotes] = useState('');
 
+  // Flexibility state
+  const [earlyTime, setEarlyTime] = useState('');
+  const [earlyPrice, setEarlyPrice] = useState('');
+  const [lateTime, setLateTime] = useState('');
+  const [latePrice, setLatePrice] = useState('');
+
+  const setEarlyCheckinMut = useSetEarlyCheckin();
+  const removeEarlyCheckinMut = useRemoveEarlyCheckin();
+  const setLateCheckoutMut = useSetLateCheckout();
+  const removeLateCheckoutMut = useRemoveLateCheckout();
+
+  // Payme QR state
+  const [showPaymeModal, setShowPaymeModal] = useState(false);
+  const [paymeAmount, setPaymeAmount] = useState('');
+  const [paymeQrUrl, setPaymeQrUrl] = useState('');
+  const [paymeLoading, setPaymeLoading] = useState(false);
+
+  // Invoice state
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoiceLoading, setInvoiceLoading] = useState(false);
+  const [invCompanyName, setInvCompanyName] = useState('');
+  const [invCompanyInn, setInvCompanyInn] = useState('');
+  const [invCompanyAddress, setInvCompanyAddress] = useState('');
+  const [invCompanyBank, setInvCompanyBank] = useState('');
+  const [invCompanyAccount, setInvCompanyAccount] = useState('');
+  const [invCompanyMfo, setInvCompanyMfo] = useState('');
+
   const addPaymentMut = useMutation({
     mutationFn: () =>
       createPayment({
@@ -76,6 +111,121 @@ export default function BookingDetailPage() {
       toast.error('Ошибка при добавлении оплаты');
     },
   });
+
+  // Flexibility handlers
+  const handleSetEarlyCheckin = useCallback(() => {
+    if (!earlyTime || !earlyPrice) return;
+    setEarlyCheckinMut.mutate(
+      { bookingId: id, time: earlyTime, price: Math.round(Number(earlyPrice) * 100) },
+      { onSuccess: () => { setEarlyTime(''); setEarlyPrice(''); } },
+    );
+  }, [id, earlyTime, earlyPrice, setEarlyCheckinMut]);
+
+  const handleRemoveEarlyCheckin = useCallback(() => {
+    removeEarlyCheckinMut.mutate(id);
+  }, [id, removeEarlyCheckinMut]);
+
+  const handleSetLateCheckout = useCallback(() => {
+    if (!lateTime || !latePrice) return;
+    setLateCheckoutMut.mutate(
+      { bookingId: id, time: lateTime, price: Math.round(Number(latePrice) * 100) },
+      { onSuccess: () => { setLateTime(''); setLatePrice(''); } },
+    );
+  }, [id, lateTime, latePrice, setLateCheckoutMut]);
+
+  const handleRemoveLateCheckout = useCallback(() => {
+    removeLateCheckoutMut.mutate(id);
+  }, [id, removeLateCheckoutMut]);
+
+  // Payme QR handlers
+  const handleGeneratePaymeQr = useCallback(async () => {
+    if (!paymeAmount || Number(paymeAmount) <= 0) return;
+    setPaymeLoading(true);
+    try {
+      const result = await generatePaymeQr(id, Math.round(Number(paymeAmount) * 100));
+      setPaymeQrUrl(result.qrUrl);
+    } catch {
+      toast.error('Ошибка при генерации QR-кода');
+    } finally {
+      setPaymeLoading(false);
+    }
+  }, [id, paymeAmount]);
+
+  const handleCheckPaymeStatus = useCallback(async () => {
+    setPaymeLoading(true);
+    try {
+      const result = await getPaymeQrStatus(id);
+      if (result.paid) {
+        toast.success('Оплата подтверждена');
+        setShowPaymeModal(false);
+        setPaymeQrUrl('');
+        setPaymeAmount('');
+        queryClient.invalidateQueries({ queryKey: ['payments', id] });
+        queryClient.invalidateQueries({ queryKey: ['bookings', id] });
+      } else {
+        toast('Оплата ещё не получена');
+      }
+    } catch {
+      toast.error('Ошибка при проверке статуса');
+    } finally {
+      setPaymeLoading(false);
+    }
+  }, [id, queryClient]);
+
+  // Invoice handlers
+  useEffect(() => {
+    if (id) {
+      listInvoices(id).then(setInvoices).catch(() => {});
+    }
+  }, [id]);
+
+  const handleDownloadPdf = useCallback(async (invoiceId: number) => {
+    try {
+      const blob = await downloadInvoicePdf(invoiceId);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `invoice-${invoiceId}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      toast.error('Ошибка при скачивании PDF');
+    }
+  }, []);
+
+  const handleCreateInvoice = useCallback(async () => {
+    if (!invCompanyName) return;
+    setInvoiceLoading(true);
+    try {
+      const dto: CreateInvoiceDto = {
+        booking_id: id,
+        company_name: invCompanyName,
+        company_inn: invCompanyInn || undefined,
+        company_address: invCompanyAddress || undefined,
+        company_bank: invCompanyBank || undefined,
+        company_account: invCompanyAccount || undefined,
+        company_mfo: invCompanyMfo || undefined,
+      };
+      const invoice = await createInvoice(dto);
+      setInvoices((prev) => [...prev, invoice]);
+      setShowInvoiceModal(false);
+      setInvCompanyName('');
+      setInvCompanyInn('');
+      setInvCompanyAddress('');
+      setInvCompanyBank('');
+      setInvCompanyAccount('');
+      setInvCompanyMfo('');
+      toast.success('Счёт создан');
+      // Auto-download PDF
+      handleDownloadPdf(invoice.id);
+    } catch {
+      toast.error('Ошибка при создании счёта');
+    } finally {
+      setInvoiceLoading(false);
+    }
+  }, [id, invCompanyName, invCompanyInn, invCompanyAddress, invCompanyBank, invCompanyAccount, invCompanyMfo, handleDownloadPdf]);
 
   const handleConfirm = useCallback(async () => {
     if (!booking) return;
@@ -253,17 +403,35 @@ export default function BookingDetailPage() {
           <div className="bg-white rounded-xl border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Оплаты</h2>
-              <Button
-                size="sm"
-                onClick={() => setShowPayment(true)}
-                icon={
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 5v14" /><path d="M5 12h14" />
-                  </svg>
-                }
-              >
-                Добавить оплату
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setPaymeAmount(balance > 0 ? String(balance / 100) : '');
+                    setPaymeQrUrl('');
+                    setShowPaymeModal(true);
+                  }}
+                  icon={
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 3v18" />
+                    </svg>
+                  }
+                >
+                  Payme QR
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => setShowPayment(true)}
+                  icon={
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 5v14" /><path d="M5 12h14" />
+                    </svg>
+                  }
+                >
+                  Добавить оплату
+                </Button>
+              </div>
             </div>
 
             {/* Payment balance bar */}
@@ -320,6 +488,103 @@ export default function BookingDetailPage() {
               </div>
             )}
           </div>
+
+          {/* Flexibility Section — Early check-in / Late check-out */}
+          {(booking.status === 'new' || booking.status === 'confirmed') && (
+            <div className="bg-white rounded-xl border border-gray-200 p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4">Гибкое время</h2>
+
+              {/* Early check-in */}
+              <div className="mb-4">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Ранний заезд</h3>
+                {booking.earlyCheckinTime ? (
+                  <div className="flex items-center justify-between bg-green-50 rounded-lg p-3">
+                    <span className="text-sm text-gray-700">
+                      Время: {booking.earlyCheckinTime} / Цена: {formatMoney(booking.earlyCheckinPrice)} сум
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveEarlyCheckin}
+                      loading={removeEarlyCheckinMut.isPending}
+                    >
+                      Отменить
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 items-end">
+                    <Input
+                      type="time"
+                      label="Время"
+                      value={earlyTime}
+                      onChange={(e) => setEarlyTime(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      label="Цена (сум)"
+                      value={earlyPrice}
+                      onChange={(e) => setEarlyPrice(e.target.value)}
+                      min={0}
+                      placeholder="0"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSetEarlyCheckin}
+                      loading={setEarlyCheckinMut.isPending}
+                      disabled={!earlyTime || !earlyPrice}
+                    >
+                      Установить
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Late check-out */}
+              <div>
+                <h3 className="text-sm font-medium text-gray-700 mb-2">Поздний выезд</h3>
+                {booking.lateCheckoutTime ? (
+                  <div className="flex items-center justify-between bg-green-50 rounded-lg p-3">
+                    <span className="text-sm text-gray-700">
+                      Время: {booking.lateCheckoutTime} / Цена: {formatMoney(booking.lateCheckoutPrice)} сум
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleRemoveLateCheckout}
+                      loading={removeLateCheckoutMut.isPending}
+                    >
+                      Отменить
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2 items-end">
+                    <Input
+                      type="time"
+                      label="Время"
+                      value={lateTime}
+                      onChange={(e) => setLateTime(e.target.value)}
+                    />
+                    <Input
+                      type="number"
+                      label="Цена (сум)"
+                      value={latePrice}
+                      onChange={(e) => setLatePrice(e.target.value)}
+                      min={0}
+                      placeholder="0"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleSetLateCheckout}
+                      loading={setLateCheckoutMut.isPending}
+                      disabled={!lateTime || !latePrice}
+                    >
+                      Установить
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Right column: timeline */}
@@ -374,6 +639,34 @@ export default function BookingDetailPage() {
               )}
             </div>
           </div>
+
+          {/* Invoices section */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-gray-900">Счета</h2>
+              <Button size="sm" onClick={() => setShowInvoiceModal(true)}>
+                Создать счёт
+              </Button>
+            </div>
+
+            {invoices.length === 0 ? (
+              <p className="text-sm text-gray-400">Нет счетов</p>
+            ) : (
+              <ul className="space-y-2">
+                {invoices.map((inv) => (
+                  <li key={inv.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium">{inv.invoiceNumber}</p>
+                      <p className="text-xs text-gray-500">{inv.companyName}</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => handleDownloadPdf(inv.id)}>
+                      PDF
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </div>
       </div>
 
@@ -424,6 +717,128 @@ export default function BookingDetailPage() {
               Остаток к оплате: {formatMoney(balance)}
             </p>
           )}
+        </div>
+      </Modal>
+
+      {/* Payme QR Modal */}
+      <Modal
+        open={showPaymeModal}
+        onClose={() => {
+          setShowPaymeModal(false);
+          setPaymeQrUrl('');
+        }}
+        title="Payme QR"
+        footer={
+          paymeQrUrl ? (
+            <>
+              <Button variant="outline" onClick={() => { setShowPaymeModal(false); setPaymeQrUrl(''); }}>
+                Закрыть
+              </Button>
+              <Button onClick={handleCheckPaymeStatus} loading={paymeLoading}>
+                Проверить оплату
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="outline" onClick={() => setShowPaymeModal(false)}>
+                Отмена
+              </Button>
+              <Button
+                onClick={handleGeneratePaymeQr}
+                loading={paymeLoading}
+                disabled={!paymeAmount || Number(paymeAmount) <= 0}
+              >
+                Сгенерировать QR
+              </Button>
+            </>
+          )
+        }
+      >
+        <div className="space-y-4">
+          {!paymeQrUrl ? (
+            <Input
+              label="Сумма (сум)"
+              type="number"
+              value={paymeAmount}
+              onChange={(e) => setPaymeAmount(e.target.value)}
+              min={1}
+              placeholder="0"
+              required
+            />
+          ) : (
+            <div className="flex flex-col items-center gap-4">
+              <img
+                src={paymeQrUrl}
+                alt="Payme QR"
+                className="w-64 h-64 border border-gray-200 rounded-lg"
+              />
+              <p className="text-sm text-gray-500">
+                Сумма: {formatMoney(Math.round(Number(paymeAmount) * 100))} сум
+              </p>
+            </div>
+          )}
+        </div>
+      </Modal>
+
+      {/* Invoice Modal */}
+      <Modal
+        open={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+        title="Создать счёт"
+        size="lg"
+        footer={
+          <>
+            <Button variant="outline" onClick={() => setShowInvoiceModal(false)}>
+              Отмена
+            </Button>
+            <Button
+              onClick={handleCreateInvoice}
+              loading={invoiceLoading}
+              disabled={!invCompanyName}
+            >
+              Создать
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="Название компании"
+            value={invCompanyName}
+            onChange={(e) => setInvCompanyName(e.target.value)}
+            placeholder="ООО «Компания»"
+            required
+          />
+          <Input
+            label="ИНН"
+            value={invCompanyInn}
+            onChange={(e) => setInvCompanyInn(e.target.value)}
+            placeholder="123456789"
+          />
+          <Input
+            label="Адрес"
+            value={invCompanyAddress}
+            onChange={(e) => setInvCompanyAddress(e.target.value)}
+            placeholder="г. Ташкент, ул. ..."
+          />
+          <Input
+            label="Банк"
+            value={invCompanyBank}
+            onChange={(e) => setInvCompanyBank(e.target.value)}
+            placeholder="АКБ «Банк»"
+          />
+          <Input
+            label="Расчётный счёт"
+            value={invCompanyAccount}
+            onChange={(e) => setInvCompanyAccount(e.target.value)}
+            placeholder="20208000..."
+          />
+          <Input
+            label="МФО"
+            value={invCompanyMfo}
+            onChange={(e) => setInvCompanyMfo(e.target.value)}
+            placeholder="00000"
+          />
         </div>
       </Modal>
     </div>

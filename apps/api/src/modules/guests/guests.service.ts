@@ -41,6 +41,16 @@ export class GuestsService {
       qb.andWhere('guest.isVip = :isVip', { isVip: query.is_vip });
     }
 
+    if (query.is_blacklisted !== undefined) {
+      qb.andWhere('guest.isBlacklisted = :isBlacklisted', {
+        isBlacklisted: query.is_blacklisted,
+      });
+    }
+
+    if (query.tag) {
+      qb.andWhere(':tag = ANY(guest.tags)', { tag: query.tag });
+    }
+
     qb.orderBy('guest.lastName', 'ASC').addOrderBy('guest.firstName', 'ASC');
 
     const [guests, total] = await qb.skip(skip).take(perPage).getManyAndCount();
@@ -267,7 +277,123 @@ export class GuestsService {
     return this.create(propertyId, guestData);
   }
 
+  // ── Tag management ─────────────────────────────────────────────────────────
+
+  /**
+   * Add tags to a guest, merging with existing tags and deduplicating.
+   */
+  async addTags(
+    propertyId: number,
+    guestId: number,
+    tags: string[],
+  ): Promise<Record<string, unknown>> {
+    const guest = await this.findGuestOrFail(guestId, propertyId);
+
+    const existingTags = guest.tags ?? [];
+    const merged = [...new Set([...existingTags, ...tags])];
+    guest.tags = merged;
+
+    const saved = await this.guestRepository.save(guest);
+    return this.toListFormat(saved);
+  }
+
+  /**
+   * Remove specific tags from a guest.
+   */
+  async removeTags(
+    propertyId: number,
+    guestId: number,
+    tags: string[],
+  ): Promise<Record<string, unknown>> {
+    const guest = await this.findGuestOrFail(guestId, propertyId);
+
+    const tagsToRemove = new Set(tags);
+    guest.tags = (guest.tags ?? []).filter((t) => !tagsToRemove.has(t));
+
+    const saved = await this.guestRepository.save(guest);
+    return this.toListFormat(saved);
+  }
+
+  /**
+   * Remove a single tag from a guest by tag name.
+   */
+  async removeTag(
+    propertyId: number,
+    guestId: number,
+    tag: string,
+  ): Promise<Record<string, unknown>> {
+    return this.removeTags(propertyId, guestId, [tag]);
+  }
+
+  // ── Blacklist management ──────────────────────────────────────────────────
+
+  /**
+   * Blacklist a guest with a reason.
+   */
+  async setBlacklist(
+    propertyId: number,
+    guestId: number,
+    reason: string,
+  ): Promise<Record<string, unknown>> {
+    const guest = await this.findGuestOrFail(guestId, propertyId);
+
+    guest.isBlacklisted = true;
+    guest.blacklistReason = reason;
+    guest.blacklistedAt = new Date();
+
+    const saved = await this.guestRepository.save(guest);
+    return this.toListFormat(saved);
+  }
+
+  /**
+   * Remove a guest from the blacklist.
+   */
+  async removeBlacklist(
+    propertyId: number,
+    guestId: number,
+  ): Promise<Record<string, unknown>> {
+    const guest = await this.findGuestOrFail(guestId, propertyId);
+
+    guest.isBlacklisted = false;
+    guest.blacklistReason = null;
+    guest.blacklistedAt = null;
+
+    const saved = await this.guestRepository.save(guest);
+    return this.toListFormat(saved);
+  }
+
+  /**
+   * List all blacklisted guests for a property.
+   */
+  async findBlacklisted(propertyId: number): Promise<Record<string, unknown>[]> {
+    const guests = await this.guestRepository.find({
+      where: { propertyId, isBlacklisted: true },
+      order: { blacklistedAt: 'DESC' },
+    });
+
+    return guests.map((guest) => this.toListFormat(guest));
+  }
+
   // ── Private helpers ─────────────────────────────────────────────────────────
+
+  /**
+   * Find a guest by id and propertyId, or throw GUEST_NOT_FOUND.
+   */
+  private async findGuestOrFail(id: number, propertyId: number): Promise<Guest> {
+    const guest = await this.guestRepository.findOne({
+      where: { id, propertyId },
+    });
+
+    if (!guest) {
+      throw new SardobaException(
+        ErrorCode.GUEST_NOT_FOUND,
+        { id, property_id: propertyId },
+        'Guest not found',
+      );
+    }
+
+    return guest;
+  }
 
   /**
    * Check phone uniqueness within a property.
@@ -314,6 +440,10 @@ export class GuestsService {
       date_of_birth: guest.dateOfBirth,
       is_vip: guest.isVip,
       notes: guest.notes,
+      tags: guest.tags ?? [],
+      is_blacklisted: guest.isBlacklisted,
+      blacklist_reason: guest.blacklistReason,
+      blacklisted_at: guest.blacklistedAt,
       total_revenue: Number(guest.totalRevenue),
       visit_count: guest.visitCount,
       created_at: guest.createdAt,
@@ -354,6 +484,10 @@ export class GuestsService {
       date_of_birth: guest.dateOfBirth,
       is_vip: guest.isVip,
       notes: guest.notes,
+      tags: guest.tags ?? [],
+      is_blacklisted: guest.isBlacklisted,
+      blacklist_reason: guest.blacklistReason,
+      blacklisted_at: guest.blacklistedAt,
       total_revenue: Number(guest.totalRevenue),
       visit_count: guest.visitCount,
       created_at: guest.createdAt,
