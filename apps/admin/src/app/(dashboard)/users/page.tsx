@@ -5,7 +5,6 @@ import { usePlatformUsers } from '@/lib/hooks';
 import {
   Search,
   Eye,
-  Ban,
   CheckCircle,
   ChevronLeft,
   ChevronRight,
