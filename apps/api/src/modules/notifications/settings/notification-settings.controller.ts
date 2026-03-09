@@ -9,6 +9,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -18,6 +19,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { NotificationSettingsService } from './notification-settings.service';
 import { UpdateNotificationSettingsDto } from '../dto/update-settings.dto';
 
@@ -32,7 +34,8 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1')
+@Controller()
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @ApiTags('Notification Settings')
 export class NotificationSettingsController {

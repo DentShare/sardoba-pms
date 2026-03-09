@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, type DynamicModule, type Type } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { EventEmitterModule } from '@nestjs/event-emitter';
@@ -19,6 +19,30 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { PublicBookingModule } from './modules/public-booking/public-booking.module';
 import { PropertyExtrasModule } from './modules/property-extras/property-extras.module';
+import { PropertiesModule } from './modules/properties/properties.module';
+import { DynamicPricingModule } from './modules/dynamic-pricing/dynamic-pricing.module';
+import { UsersModule } from './modules/users/users.module';
+import { GroupBookingsModule } from './modules/group-bookings/group-bookings.module';
+import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
+import { UploadModule } from './modules/uploads/upload.module';
+import { CacheModule } from './modules/cache/cache.module';
+import { AdminModule } from './modules/admin/admin.module';
+
+/**
+ * Conditionally include a module based on an environment variable.
+ * Returns the module if the env var is 'true' (or missing), otherwise skips it.
+ */
+function featureModule(
+  envVar: string,
+  mod: Type | DynamicModule,
+): (Type | DynamicModule)[] {
+  const value = process.env[envVar];
+  if (value === 'false' || value === '0') {
+    return [];
+  }
+  return [mod];
+}
 
 @Module({
   imports: [
@@ -57,6 +81,7 @@ import { PropertyExtrasModule } from './modules/property-extras/property-extras.
       inject: [ConfigService],
     }),
 
+    // ── Core modules (always loaded) ─────────────────────────────────────
     DatabaseModule,
     AuthModule,
     RoomsModule,
@@ -64,11 +89,22 @@ import { PropertyExtrasModule } from './modules/property-extras/property-extras.
     GuestsModule,
     BookingsModule,
     PaymentsModule,
-    ChannelModule,
     NotificationsModule,
-    AnalyticsModule,
     PropertyExtrasModule,
+    PropertiesModule,
     PublicBookingModule,
+    UsersModule,
+    HousekeepingModule,
+    MessagingModule,
+    UploadModule,
+    CacheModule,
+    AdminModule,
+
+    // ── Feature-flagged modules ──────────────────────────────────────────
+    ...featureModule('FEATURE_CHANNEL_MANAGER', ChannelModule),
+    ...featureModule('FEATURE_CHANNEL_MANAGER', GroupBookingsModule),
+    ...featureModule('FEATURE_ANALYTICS', AnalyticsModule),
+    ...featureModule('FEATURE_ONLINE_PAYMENTS', DynamicPricingModule),
   ],
   controllers: [HealthController],
   providers: [

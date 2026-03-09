@@ -14,6 +14,7 @@ import {
   HttpCode,
   HttpStatus,
   DefaultValuePipe,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -25,6 +26,8 @@ import {
 } from '@nestjs/swagger';
 import { Request } from 'express';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { Public } from '@/modules/auth/decorators/public.decorator';
 import { ChannelManagerService } from './channel-manager.service';
 import { BookingComService } from './channels/booking-com.service';
 import { CreateChannelDto } from './dto/create-channel.dto';
@@ -42,7 +45,9 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1')
+@Controller()
+@UseGuards(JwtAuthGuard)
+@ApiBearerAuth()
 @ApiTags('Channel Manager')
 export class ChannelManagerController {
   constructor(
@@ -193,6 +198,7 @@ export class ChannelManagerController {
   // ── POST /v1/webhooks/booking-com ───────────────────────────────────────
   // PUBLIC endpoint — no JWT required. Secured via HMAC signature.
 
+  @Public()
   @Post('webhooks/booking-com')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({

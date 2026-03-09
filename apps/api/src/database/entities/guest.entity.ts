@@ -10,6 +10,7 @@ import {
   Index,
   Unique,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { Property } from './property.entity';
 import { Booking } from './booking.entity';
 
@@ -45,6 +46,7 @@ export class Guest {
   @Column({ type: 'varchar', length: 20, name: 'document_type', nullable: true })
   documentType!: DocumentType | null;
 
+  @Exclude()
   @Column({ type: 'bytea', name: 'document_number', nullable: true })
   documentNumber!: Buffer | null;
 

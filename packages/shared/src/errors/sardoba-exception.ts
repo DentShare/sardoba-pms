@@ -59,6 +59,19 @@ const ERROR_HTTP_MAP: Record<ErrorCode, number> = {
   [ErrorCode.CHANNEL_NOT_CONFIGURED]: 503,
   [ErrorCode.SERVICE_UNAVAILABLE]: 503,
 
+  // Group Booking
+  [ErrorCode.GROUP_INVALID_STATUS]: 422,
+  [ErrorCode.GROUP_HAS_ACTIVE_ROOMS]: 422,
+
+  // Dynamic Pricing
+  [ErrorCode.PRICING_RULE_NOT_FOUND]: 404,
+  [ErrorCode.PRICING_RULE_CONFLICT]: 409,
+  [ErrorCode.PRICING_MIN_EXCEEDS_MAX]: 400,
+
+  // Widget / Mini-Site
+  [ErrorCode.WIDGET_DISABLED]: 403,
+  [ErrorCode.SLUG_ALREADY_TAKEN]: 409,
+
   // 500 Internal Server Error
   [ErrorCode.INTERNAL_ERROR]: 500,
 };

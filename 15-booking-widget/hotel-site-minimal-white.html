@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hostel Samarkand — Бронирование</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="uiux-improvements.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:       #1A1A1A;
+  --primary-light:  #333333;
+  --secondary:      #666666;
+  --bg:             #FFFFFF;
+  --bg-alt:         #F5F5F5;
+  --surface:        #FAFAFA;
+  --text:           #1A1A1A;
+  --text-muted:     #666666;
+  --text-subtle:    #999999;
+  --nav-bg:         rgba(255, 255, 255, 0.95);
+  --nav-text:       #1A1A1A;
+  --footer-bg:      #1A1A1A;
+  --footer-text:    #999999;
+  --input-border:   #E5E5E5;
+  --border-subtle:  #E5E5E5;
+  --card-radius:    8px;
+  --btn-radius:     8px;
+  --input-radius:   6px;
+  --card-shadow:    0 1px 3px rgba(0, 0, 0, 0.06);
+  --card-hover:     0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: var(--bg-alt); }
+::-webkit-scrollbar-thumb { background: var(--text-subtle); border-radius: 2px; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 0 48px; height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--nav-bg);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 8px;
+  text-decoration: none; color: var(--text);
+  font-size: 16px; font-weight: 600; letter-spacing: -0.02em;
+}
+.nav-logo-dot {
+  width: 8px; height: 8px;
+  background: var(--primary); border-radius: 2px;
+}
+.nav-links { display: flex; gap: 24px; list-style: none; }
+.nav-links a {
+  font-size: 13px; font-weight: 500; color: var(--text-muted);
+  text-decoration: none; transition: color .2s;
+}
+.nav-links a:hover { color: var(--text); }
+.btn-book-nav {
+  padding: 8px 20px;
+  background: var(--primary); color: #fff;
+  font-size: 13px; font-weight: 600; border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  font-family: 'Space Grotesk', sans-serif;
+}
+.btn-book-nav:hover { background: var(--primary-light); }
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  min-height: 50vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 100px 48px 64px;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(26,26,26,0.3) 0%, rgba(26,26,26,0.6) 100%),
+              linear-gradient(135deg, #333 0%, #1A1A1A 100%);
+}
+.hero-title {
+  position: relative; z-index: 2;
+  font-size: clamp(32px, 4.5vw, 56px);
+  font-weight: 700; line-height: 1.1;
+  color: #fff; margin-bottom: 12px;
+  letter-spacing: -0.03em;
+}
+.hero-subtitle {
+  position: relative; z-index: 2;
+  font-size: 15px; color: rgba(255,255,255,0.6);
+  max-width: 420px; line-height: 1.6; margin-bottom: 24px;
+  font-weight: 400;
+}
+.hero-meta {
+  position: relative; z-index: 2;
+  display: flex; gap: 16px; flex-wrap: wrap; justify-content: center;
+}
+.hero-meta-item {
+  font-size: 12px; color: rgba(255,255,255,0.5);
+  display: flex; align-items: center; gap: 4px;
+}
+.hero-meta-item svg { width: 14px; height: 14px; }
+
+/* ── SECTIONS ── */
+.section {
+  padding: 72px 48px;
+  max-width: 1100px; margin: 0 auto;
+}
+.section-header { margin-bottom: 40px; }
+.section-tag {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+  color: var(--text-subtle); text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.section-title {
+  font-size: clamp(24px, 2.5vw, 36px);
+  font-weight: 700; line-height: 1.2; color: var(--text);
+  letter-spacing: -0.02em;
+}
+.about-text {
+  max-width: 620px;
+  font-size: 15px; line-height: 1.8; color: var(--text-muted);
+}
+
+/* ── ROOMS ── */
+.rooms-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.room-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow .2s;
+}
+.room-card:hover { box-shadow: var(--card-hover); }
+.room-card-img {
+  height: 180px; position: relative;
+  background: var(--bg-alt);
+  display: flex; align-items: center; justify-content: center;
+}
+.room-card-img-placeholder {
+  font-size: 48px; font-weight: 700; color: var(--border-subtle);
+  letter-spacing: -0.05em;
+}
+.room-type-tag {
+  position: absolute; top: 10px; left: 10px;
+  padding: 4px 10px; background: var(--primary); color: #fff;
+  font-size: 10px; font-weight: 600; letter-spacing: 0.05em;
+  border-radius: 4px; text-transform: uppercase;
+}
+.room-body { padding: 16px; }
+.room-name { font-size: 16px; font-weight: 600; margin-bottom: 8px; letter-spacing: -0.01em; }
+.room-specs {
+  display: flex; gap: 12px; margin-bottom: 14px;
+}
+.room-spec {
+  font-size: 12px; color: var(--text-muted);
+  display: flex; align-items: center; gap: 3px;
+}
+.room-spec svg { width: 12px; height: 12px; }
+.room-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 14px; border-top: 1px solid var(--border-subtle);
+}
+.room-price { font-size: 20px; font-weight: 700; color: var(--text); }
+.room-price-label { font-size: 11px; color: var(--text-subtle); font-weight: 400; }
+.room-btn {
+  padding: 8px 16px;
+  background: var(--primary); color: #fff;
+  font-size: 12px; font-weight: 600; border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  font-family: 'Space Grotesk', sans-serif;
+}
+.room-btn:hover { background: var(--primary-light); }
+
+/* ── EXTRAS ── */
+.extras-list { display: flex; flex-direction: column; gap: 1px; }
+.extra-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 0;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.extra-row:last-child { border-bottom: none; }
+.extra-left { display: flex; align-items: center; gap: 12px; }
+.extra-num {
+  width: 28px; height: 28px;
+  background: var(--bg-alt); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+}
+.extra-name { font-size: 14px; font-weight: 500; }
+.extra-price { font-size: 14px; font-weight: 600; color: var(--text); }
+
+/* ── BOOKING ── */
+.booking-section {
+  padding: 72px 48px; background: var(--bg-alt);
+}
+.booking-layout {
+  display: grid; grid-template-columns: 1fr 400px; gap: 56px;
+  max-width: 1000px; margin: 0 auto; align-items: start;
+}
+.booking-tag {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.1em;
+  color: var(--text-subtle); text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.booking-title {
+  font-size: 32px; font-weight: 700; line-height: 1.2;
+  margin-bottom: 12px; letter-spacing: -0.02em;
+}
+.booking-desc {
+  font-size: 15px; color: var(--text-muted); line-height: 1.6; margin-bottom: 32px;
+}
+.facts { display: flex; flex-direction: column; gap: 16px; }
+.fact {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 14px; color: var(--text-muted);
+}
+.fact:last-child { border-bottom: none; }
+.fact-check {
+  width: 20px; height: 20px; flex-shrink: 0;
+  border: 2px solid var(--primary); border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+}
+.fact-check svg { width: 12px; height: 12px; }
+
+.form-card {
+  background: var(--bg); border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius); padding: 28px;
+  box-shadow: var(--card-shadow);
+}
+.form-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; letter-spacing: -0.01em; }
+.form-subtitle { font-size: 13px; color: var(--text-muted); margin-bottom: 24px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.form-group { margin-bottom: 10px; }
+.form-label {
+  display: block; font-size: 11px; font-weight: 600; color: var(--text);
+  margin-bottom: 4px; letter-spacing: 0.02em;
+}
+.form-input, .form-select {
+  width: 100%; padding: 10px 12px;
+  background: var(--bg); border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: 14px; color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  outline: none; transition: border-color .2s;
+}
+.form-input:focus, .form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(26,26,26,0.08);
+}
+.form-input::placeholder { color: var(--text-subtle); }
+.form-select {
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' viewBox='0 0 10 6' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L5 5L9 1' stroke='%23999' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+.form-total {
+  margin: 16px 0; padding: 14px;
+  background: var(--bg-alt); border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.form-total-label { font-size: 13px; color: var(--text-muted); }
+.form-total-nights { font-size: 11px; color: var(--text-subtle); margin-top: 2px; }
+.form-total-amount { font-size: 22px; font-weight: 700; color: var(--text); }
+.btn-submit {
+  width: 100%; padding: 14px;
+  background: var(--primary); color: #fff;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 14px; font-weight: 600; border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+}
+.btn-submit:hover { background: var(--primary-light); }
+.btn-submit svg { width: 14px; height: 14px; }
+.form-note {
+  margin-top: 12px; font-size: 11px; color: var(--text-subtle);
+  text-align: center; line-height: 1.5;
+}
+.form-note a { color: var(--text); text-decoration: underline; }
+
+/* ── CONTACTS ── */
+.contacts-row {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
+}
+.contact-item {
+  padding: 20px; background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+}
+.contact-item:hover { border-color: var(--text-subtle); }
+.contact-label {
+  font-size: 10px; font-weight: 600; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--text-subtle); margin-bottom: 6px;
+}
+.contact-value { font-size: 14px; color: var(--text); line-height: 1.4; }
+.contact-value a { color: var(--text); text-decoration: none; }
+.contact-value a:hover { text-decoration: underline; }
+
+/* ── FOOTER ── */
+footer {
+  padding: 20px 48px; background: var(--footer-bg);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.footer-brand { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: -0.01em; }
+.footer-copy { font-size: 11px; color: var(--footer-text); }
+.footer-powered { font-size: 11px; color: var(--footer-text); }
+.footer-powered span { color: #fff; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  nav { padding: 0 20px; height: 48px; }
+  .nav-links { display: none; }
+  .hero { min-height: 40vh; padding: 80px 20px 48px; }
+  .section { padding: 48px 20px; }
+  .rooms-grid { grid-template-columns: 1fr; }
+  .booking-section { padding: 48px 20px; }
+  .booking-layout { grid-template-columns: 1fr; gap: 32px; }
+  .contacts-row { grid-template-columns: 1fr 1fr; }
+  footer { flex-direction: column; gap: 8px; text-align: center; padding: 16px 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-dot"></div>
+    Hostel Samarkand
+  </a>
+  <ul class="nav-links">
+    <li><a href="#">Главная</a></li>
+    <li><a href="#rooms">Номера</a></li>
+    <li><a href="#booking">Бронь</a></li>
+    <li><a href="#contacts">Контакты</a></li>
+  </ul>
+  <button class="btn-book-nav" onclick="document.getElementById('booking').scrollIntoView({behavior:'smooth'})">Забронировать</button>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <h1 class="hero-title">Hostel Samarkand</h1>
+  <p class="hero-subtitle">Чистый, простой и доступный хостел в центре города. Всё необходимое — ничего лишнего.</p>
+  <div class="hero-meta">
+    <div class="hero-meta-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      Самарканд
+    </div>
+    <div class="hero-meta-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.6 1h3"/></svg>
+      +998 90 123 45 67
+    </div>
+    <div class="hero-meta-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>
+      info@hostel-samarkand.uz
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-tag">О хостеле</div>
+    <h2 class="section-title">Просто и удобно</h2>
+  </div>
+  <p class="about-text">
+    Хостел Самарканд — это бюджетное размещение с чистыми номерами, быстрым Wi-Fi и отличным расположением.
+    До площади Регистан — 10 минут пешком. Общая кухня, прачечная и зона отдыха в вашем распоряжении.
+  </p>
+</div>
+
+<!-- ROOMS -->
+<div class="section" id="rooms">
+  <div class="section-header">
+    <div class="section-tag">Номера</div>
+    <h2 class="section-title">Выберите размещение</h2>
+  </div>
+  <div class="rooms-grid">
+    <div class="room-card">
+      <div class="room-card-img">
+        <div class="room-card-img-placeholder">01</div>
+        <div class="room-type-tag">Койко-место</div>
+      </div>
+      <div class="room-body">
+        <div class="room-name">Место в общем номере</div>
+        <div class="room-specs">
+          <span class="room-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 1 гость</span>
+          <span class="room-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><circle cx="12" cy="20" r="1"/></svg> Wi-Fi</span>
+        </div>
+        <div class="room-footer">
+          <div class="room-price">80 000 <span class="room-price-label">сум/ночь</span></div>
+          <button class="room-btn">Выбрать</button>
+        </div>
+      </div>
+    </div>
+    <div class="room-card">
+      <div class="room-card-img">
+        <div class="room-card-img-placeholder">02</div>
+        <div class="room-type-tag">Стандарт</div>
+      </div>
+      <div class="room-body">
+        <div class="room-name">Двухместный стандарт</div>
+        <div class="room-specs">
+          <span class="room-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 2 гостя</span>
+          <span class="room-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><circle cx="12" cy="20" r="1"/></svg> Wi-Fi</span>
+        </div>
+        <div class="room-footer">
+          <div class="room-price">180 000 <span class="room-price-label">сум/ночь</span></div>
+          <button class="room-btn">Выбрать</button>
+        </div>
+      </div>
+    </div>
+    <div class="room-card">
+      <div class="room-card-img">
+        <div class="room-card-img-placeholder">03</div>
+        <div class="room-type-tag">Комфорт</div>
+      </div>
+      <div class="room-body">
+        <div class="room-name">Двухместный с ванной</div>
+        <div class="room-specs">
+          <span class="room-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 2 гостя</span>
+          <span class="room-spec"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><circle cx="12" cy="20" r="1"/></svg> Wi-Fi</span>
+        </div>
+        <div class="room-footer">
+          <div class="room-price">250 000 <span class="room-price-label">сум/ночь</span></div>
+          <button class="room-btn">Выбрать</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXTRAS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-tag">Услуги</div>
+    <h2 class="section-title">Дополнительно</h2>
+  </div>
+  <div class="extras-list">
+    <div class="extra-row">
+      <div class="extra-left"><div class="extra-num">01</div><div class="extra-name">Завтрак</div></div>
+      <div class="extra-price">40 000 сум/чел</div>
+    </div>
+    <div class="extra-row">
+      <div class="extra-left"><div class="extra-num">02</div><div class="extra-name">Трансфер из аэропорта</div></div>
+      <div class="extra-price">100 000 сум</div>
+    </div>
+    <div class="extra-row">
+      <div class="extra-left"><div class="extra-num">03</div><div class="extra-name">Стирка (1 загрузка)</div></div>
+      <div class="extra-price">25 000 сум</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKING FORM -->
+<section class="booking-section" id="booking">
+  <div class="booking-layout">
+    <div>
+      <div class="booking-tag">Бронирование</div>
+      <h2 class="booking-title">Забронируйте напрямую</h2>
+      <p class="booking-desc">Без комиссий, без посредников. Лучшая цена гарантирована.</p>
+      <div class="facts">
+        <div class="fact">
+          <div class="fact-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          Лучшая цена — дешевле агрегаторов
+        </div>
+        <div class="fact">
+          <div class="fact-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          Бесплатная отмена за 24 часа
+        </div>
+        <div class="fact">
+          <div class="fact-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          Оплата при заезде, без предоплаты
+        </div>
+        <div class="fact">
+          <div class="fact-check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></div>
+          Подтверждение в WhatsApp
+        </div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-title">Оформить бронь</div>
+      <div class="form-subtitle">Заполните форму</div>
+      <div class="form-row">
+        <div><label class="form-label">Заезд</label><input class="form-input" type="date" id="checkin" oninput="calcTotal()"></div>
+        <div><label class="form-label">Выезд</label><input class="form-input" type="date" id="checkout" oninput="calcTotal()"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Размещение</label>
+        <select class="form-select" id="room-select" onchange="calcTotal()">
+          <option value="80000">Место в общем — 80 000/ночь</option>
+          <option value="180000">Двухместный стандарт — 180 000/ночь</option>
+          <option value="250000">Двухместный с ванной — 250 000/ночь</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">Имя</label><input class="form-input" type="text" placeholder="Имя"></div>
+        <div><label class="form-label">Фамилия</label><input class="form-input" type="text" placeholder="Фамилия"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Телефон</label>
+        <input class="form-input" type="tel" placeholder="+998 90 123 45 67">
+      </div>
+      <div class="form-total">
+        <div><div class="form-total-label">Итого</div><div class="form-total-nights" id="nights-label">Выберите даты</div></div>
+        <div class="form-total-amount" id="total-amount">—</div>
+      </div>
+      <button class="btn-submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        Забронировать
+      </button>
+      <div class="form-note">Нажимая кнопку, вы соглашаетесь с <a href="#">условиями</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACTS -->
+<div class="section" id="contacts">
+  <div class="section-header">
+    <div class="section-tag">Контакты</div>
+    <h2 class="section-title">Как нас найти</h2>
+  </div>
+  <div class="contacts-row">
+    <div class="contact-item">
+      <div class="contact-label">Адрес</div>
+      <div class="contact-value">ул. Регистан, 15<br>Самарканд</div>
+    </div>
+    <div class="contact-item">
+      <div class="contact-label">Телефон</div>
+      <div class="contact-value"><a href="tel:+998901234567">+998 90 123 45 67</a></div>
+    </div>
+    <div class="contact-item">
+      <div class="contact-label">Email</div>
+      <div class="contact-value"><a href="#">info@hostel-samarkand.uz</a></div>
+    </div>
+    <div class="contact-item">
+      <div class="contact-label">Часы работы</div>
+      <div class="contact-value">Заезд: 14:00<br>Выезд: 11:00</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">Hostel Samarkand</div>
+  <div class="footer-copy">© 2025</div>
+  <div class="footer-powered">Работает на <span>Sardoba PMS</span></div>
+</footer>
+
+<script>
+function calcTotal() {
+  const ci = document.getElementById('checkin').value;
+  const co = document.getElementById('checkout').value;
+  const price = parseInt(document.getElementById('room-select').value);
+  if (ci && co) {
+    const nights = Math.round((new Date(co) - new Date(ci)) / 86400000);
+    if (nights > 0) {
+      document.getElementById('total-amount').textContent = (nights * price).toLocaleString('ru-RU') + ' сум';
+      document.getElementById('nights-label').textContent = nights + ' ' + (nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей');
+      return;
+    }
+  }
+  document.getElementById('total-amount').textContent = '—';
+  document.getElementById('nights-label').textContent = 'Выберите даты';
+}
+</script>
+</body>
+</html>

@@ -13,11 +13,14 @@ import {
   createBooking,
   updateBooking,
   cancelBooking,
+  confirmBooking,
   checkinBooking,
   checkoutBooking,
+  getTodaySummary,
   type BookingFilters,
   type CreateBookingDto,
   type UpdateBookingDto,
+  type TodaySummary,
 } from '@/lib/api/bookings';
 import type { Booking, PaginatedResponse } from '@sardoba/shared';
 
@@ -36,6 +39,7 @@ export function useBookings(
   return useQuery({
     queryKey: [BOOKINGS_KEY, filters],
     queryFn: () => listBookings(filters),
+    enabled: !!filters.propertyId,
     ...options,
   });
 }
@@ -117,6 +121,26 @@ export function useCancelBooking() {
 }
 
 /**
+ * Confirm a booking (new -> confirmed).
+ */
+export function useConfirmBooking() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: number) => confirmBooking(id),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: [BOOKINGS_KEY] });
+      queryClient.invalidateQueries({ queryKey: ['calendar'] });
+      queryClient.setQueryData([BOOKINGS_KEY, data.id], data);
+      toast.success('Бронирование подтверждено');
+    },
+    onError: () => {
+      toast.error('Ошибка при подтверждении');
+    },
+  });
+}
+
+/**
  * Check in a booking.
  */
 export function useCheckinBooking() {
@@ -153,5 +177,17 @@ export function useCheckoutBooking() {
     onError: () => {
       toast.error('Ошибка при выселении');
     },
+  });
+}
+
+/**
+ * Get today's dashboard summary.
+ */
+export function useTodaySummary(propertyId: number | null) {
+  return useQuery<TodaySummary>({
+    queryKey: ['today-summary', propertyId],
+    queryFn: () => getTodaySummary(propertyId!),
+    enabled: !!propertyId,
+    refetchInterval: 60_000, // auto-refresh every minute
   });
 }

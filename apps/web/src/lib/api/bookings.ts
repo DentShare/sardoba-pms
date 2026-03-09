@@ -23,14 +23,20 @@ export interface BookingFilters {
 export interface CreateBookingDto {
   property_id: number;
   room_id: number;
-  guest_id: number;
+  guest_id?: number;
+  guest?: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    email?: string;
+    nationality?: string;
+  };
   check_in: string;
   check_out: string;
-  adults: number;
+  adults?: number;
   children?: number;
   rate_id?: number;
-  total_amount: number;
-  source: string;
+  source?: string;
   source_reference?: string;
   notes?: string;
 }
@@ -42,7 +48,6 @@ export interface UpdateBookingDto {
   adults?: number;
   children?: number;
   rate_id?: number;
-  total_amount?: number;
   notes?: string;
 }
 
@@ -54,7 +59,6 @@ export async function listBookings(
 ): Promise<PaginatedResponse<Booking>> {
   const params: Record<string, unknown> = {};
 
-  if (filters.propertyId) params.property_id = filters.propertyId;
   if (filters.status) params.status = filters.status;
   if (filters.source) params.source = filters.source;
   if (filters.roomId) params.room_id = filters.roomId;
@@ -67,9 +71,10 @@ export async function listBookings(
   if (filters.sortBy) params.sort_by = filters.sortBy;
   if (filters.sortOrder) params.sort_order = filters.sortOrder;
 
-  const { data } = await api.get<PaginatedResponse<Booking>>('/bookings', {
-    params,
-  });
+  const { data } = await api.get<PaginatedResponse<Booking>>(
+    `/properties/${filters.propertyId}/bookings`,
+    { params },
+  );
   return data;
 }
 
@@ -114,10 +119,18 @@ export async function cancelBooking(
 }
 
 /**
+ * Confirm a booking (new -> confirmed).
+ */
+export async function confirmBooking(id: number): Promise<Booking> {
+  const { data } = await api.post<Booking>(`/bookings/${id}/confirm`);
+  return data;
+}
+
+/**
  * Check in a booking.
  */
 export async function checkinBooking(id: number): Promise<Booking> {
-  const { data } = await api.post<Booking>(`/bookings/${id}/checkin`);
+  const { data } = await api.post<Booking>(`/bookings/${id}/check-in`);
   return data;
 }
 
@@ -125,7 +138,48 @@ export async function checkinBooking(id: number): Promise<Booking> {
  * Check out a booking.
  */
 export async function checkoutBooking(id: number): Promise<Booking> {
-  const { data } = await api.post<Booking>(`/bookings/${id}/checkout`);
+  const { data } = await api.post<Booking>(`/bookings/${id}/check-out`);
+  return data;
+}
+
+/**
+ * Get today's dashboard summary.
+ */
+export interface TodaySummaryBooking {
+  id: number;
+  bookingNumber: string;
+  guestName: string | null;
+  guestPhone: string | null;
+  roomName: string | null;
+  roomId: number;
+  checkIn: string;
+  checkOut: string;
+  nights: number;
+  totalAmount: number;
+  paidAmount: number;
+  status: string;
+  source: string;
+  adults: number;
+  children: number;
+}
+
+export interface TodaySummary {
+  stats: {
+    totalRooms: number;
+    occupiedRooms: number;
+    occupancyPercent: number;
+    arrivalsCount: number;
+    departuresCount: number;
+    inHouseCount: number;
+    todayRevenue: number;
+  };
+  arrivals: TodaySummaryBooking[];
+  departures: TodaySummaryBooking[];
+  inHouse: TodaySummaryBooking[];
+}
+
+export async function getTodaySummary(propertyId: number): Promise<TodaySummary> {
+  const { data } = await api.get<TodaySummary>(`/properties/${propertyId}/today`);
   return data;
 }
 
@@ -137,12 +191,14 @@ export async function getCalendar(
   dateFrom: string,
   dateTo: string,
 ): Promise<CalendarResponse> {
-  const { data } = await api.get<CalendarResponse>('/bookings/calendar', {
-    params: {
-      property_id: propertyId,
-      date_from: dateFrom,
-      date_to: dateTo,
+  const { data } = await api.get<CalendarResponse>(
+    `/properties/${propertyId}/calendar`,
+    {
+      params: {
+        date_from: dateFrom,
+        date_to: dateTo,
+      },
     },
-  });
+  );
   return data;
 }

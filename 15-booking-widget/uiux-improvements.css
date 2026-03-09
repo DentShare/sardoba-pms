@@ -1,0 +1,115 @@
+/* ═══════════════════════════════════════════════════════════════════
+   UI/UX Pro Max — Universal Improvements for All Hotel Presets
+   Based on: 99 UX Guidelines, Accessibility WCAG AAA checklist
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. ACCESSIBILITY: Focus States ── */
+*:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 2px solid var(--primary, #2563EB);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ── 2. INTERACTION: Cursor & Touch Targets ── */
+a, button, [role="button"], label, select,
+.room-card, .extra-card, .contact-card, .contact-item,
+.room-btn, .btn-submit, .btn-book-nav, .btn-book, .btn-gold,
+.search-btn, .dot, .lang-btn, .nav-links a {
+  cursor: pointer;
+}
+
+/* Touch targets minimum 44x44 */
+button, .btn-book-nav, .btn-submit, .room-btn, .search-btn, .btn-book {
+  min-height: 44px;
+}
+
+/* ── 3. ANIMATION: Smooth Transitions ── */
+a, button, input, select, .room-card, .extra-card, .contact-card,
+.contact-item, .perk, .fact {
+  transition: all 0.2s ease;
+}
+
+/* ── 4. REDUCED MOTION ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ── 5. TYPOGRAPHY: Better Readability ── */
+p, .about-text, .booking-desc, .perk-desc, .form-note, .hero-subtitle {
+  line-height: 1.7;
+}
+h1, h2, h3, .section-title, .hero-title, .booking-title {
+  letter-spacing: -0.02em;
+}
+
+/* ── 6. FORM UX: Better Input States ── */
+.form-input:hover, .form-select:hover {
+  border-color: var(--primary, #666);
+}
+.form-input:invalid:not(:placeholder-shown) {
+  border-color: var(--error, #DC2626);
+}
+
+/* ── 7. BUTTON STATES: Loading & Active ── */
+button:active, .btn-submit:active, .btn-book-nav:active, .room-btn:active {
+  transform: scale(0.98) !important;
+  transition-duration: 0.05s;
+}
+button:disabled, .btn-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
+}
+
+/* ── 8. CARDS: Subtle Interaction Feedback ── */
+.room-card:hover .room-card-img,
+.room-card:hover .room-card-bg {
+  transform: scale(1.03);
+  transition: transform 0.5s ease;
+}
+.room-card-img, .room-card-bg {
+  transition: transform 0.5s ease;
+}
+.extra-card:hover, .contact-card:hover, .contact-item:hover {
+  transform: translateY(-2px);
+}
+
+/* ── 9. SCROLL HINT: Subtle gradient at sections ── */
+.hero::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, var(--primary, #999) 50%, transparent 100%);
+  opacity: 0.2;
+}
+
+/* ── 10. SELECTION: Themed text selection ── */
+::selection {
+  background: var(--primary, #2563EB);
+  color: #fff;
+}
+
+/* ── 11. PRINT: Basic print styles ── */
+@media print {
+  nav, footer, .btn-book-nav, .btn-submit, .hero-bg { display: none; }
+  body { background: #fff; color: #000; }
+  .hero { min-height: auto; padding: 20px; }
+}
+
+/* ── 12. SMOOTH SCROLL ANCHOR OFFSET ── */
+html {
+  scroll-padding-top: 80px;
+}

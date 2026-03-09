@@ -8,6 +8,7 @@ import {
   OneToMany,
   Unique,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { Property } from './property.entity';
 import { RoomMapping } from './room-mapping.entity';
 import { SyncLog } from './sync-log.entity';
@@ -34,6 +35,7 @@ export class Channel {
   @Column({ type: 'boolean', name: 'is_active', default: true })
   isActive!: boolean;
 
+  @Exclude()
   @Column({ type: 'bytea' })
   credentials!: Buffer;
 

@@ -12,7 +12,10 @@ import {
   Req,
   Res,
   UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
@@ -20,11 +23,13 @@ import {
   ApiBearerAuth,
   ApiParam,
   ApiQuery,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { Response } from 'express';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
 import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { PropertyGuard } from '@/modules/auth/guards/property.guard';
+import { UploadService } from '@/modules/uploads/upload.service';
 import { GuestsService } from './guests.service';
 import { CreateGuestDto } from './dto/create-guest.dto';
 import { UpdateGuestDto } from './dto/update-guest.dto';
@@ -41,12 +46,15 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1')
+@Controller()
 @ApiBearerAuth()
 @ApiTags('Guests')
 @UseGuards(JwtAuthGuard, PropertyGuard)
 export class GuestsController {
-  constructor(private readonly guestsService: GuestsService) {}
+  constructor(
+    private readonly guestsService: GuestsService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   // ── GET /v1/properties/:propertyId/guests ───────────────────────────────────
 
@@ -112,6 +120,28 @@ export class GuestsController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.guestsService.update(id, req.user.propertyId, dto);
+  }
+
+  // ── POST /v1/guests/:id/documents ─────────────────────────────────────────
+
+  @Post('guests/:id/documents')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiOperation({ summary: 'Upload a document photo/scan for a guest' })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Document uploaded, returns URL' })
+  @ApiResponse({ status: 400, description: 'VALIDATION_ERROR - invalid file' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 404, description: 'GUEST_NOT_FOUND' })
+  async uploadDocument(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    // Verify guest exists and belongs to this property
+    await this.guestsService.findOne(id, req.user.propertyId);
+    const url = this.uploadService.saveDocument(file);
+    return { url };
   }
 
   // ── GET /v1/properties/:propertyId/guests/search ────────────────────────────

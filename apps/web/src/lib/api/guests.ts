@@ -13,7 +13,6 @@ export interface GuestFilters {
 }
 
 export interface CreateGuestDto {
-  property_id: number;
   first_name: string;
   last_name: string;
   phone: string;
@@ -47,7 +46,6 @@ export async function listGuests(
 ): Promise<PaginatedResponse<Guest>> {
   const params: Record<string, unknown> = {};
 
-  if (filters.propertyId) params.property_id = filters.propertyId;
   if (filters.search) params.search = filters.search;
   if (filters.isVip !== undefined) params.is_vip = filters.isVip;
   if (filters.nationality) params.nationality = filters.nationality;
@@ -56,9 +54,10 @@ export async function listGuests(
   if (filters.sortBy) params.sort_by = filters.sortBy;
   if (filters.sortOrder) params.sort_order = filters.sortOrder;
 
-  const { data } = await api.get<PaginatedResponse<Guest>>('/guests', {
-    params,
-  });
+  const { data } = await api.get<PaginatedResponse<Guest>>(
+    `/properties/${filters.propertyId}/guests`,
+    { params },
+  );
   return data;
 }
 
@@ -85,7 +84,7 @@ export async function updateGuest(
   id: number,
   dto: UpdateGuestDto,
 ): Promise<Guest> {
-  const { data } = await api.patch<Guest>(`/guests/${id}`, dto);
+  const { data } = await api.put<Guest>(`/guests/${id}`, dto);
   return data;
 }
 
@@ -94,12 +93,30 @@ export async function updateGuest(
  */
 export async function searchGuests(
   query: string,
-  propertyId?: number,
+  propertyId: number,
 ): Promise<Guest[]> {
-  const params: Record<string, unknown> = { q: query };
-  if (propertyId) params.property_id = propertyId;
+  const { data } = await api.get<Guest[]>(
+    `/properties/${propertyId}/guests/search`,
+    { params: { q: query } },
+  );
+  return data;
+}
 
-  const { data } = await api.get<Guest[]>('/guests/search', { params });
+/**
+ * Upload a document/passport photo for a guest.
+ */
+export async function uploadGuestDocument(
+  guestId: number,
+  file: File,
+): Promise<{ url: string }> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const { data } = await api.post<{ url: string }>(
+    `/guests/${guestId}/documents`,
+    formData,
+    { headers: { 'Content-Type': 'multipart/form-data' } },
+  );
   return data;
 }
 
@@ -109,17 +126,17 @@ export async function searchGuests(
 export async function exportOvir(
   dateFrom: string,
   dateTo: string,
-  propertyId?: number,
+  propertyId: number,
 ): Promise<Blob> {
-  const params: Record<string, unknown> = {
-    date_from: dateFrom,
-    date_to: dateTo,
-  };
-  if (propertyId) params.property_id = propertyId;
-
-  const { data } = await api.get('/guests/ovir-export', {
-    params,
-    responseType: 'blob',
-  });
+  const { data } = await api.get(
+    `/properties/${propertyId}/guests/export`,
+    {
+      params: {
+        date_from: dateFrom,
+        date_to: dateTo,
+      },
+      responseType: 'blob',
+    },
+  );
   return data;
 }

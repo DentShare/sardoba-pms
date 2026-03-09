@@ -68,6 +68,15 @@ export class Property {
   @Column({ type: 'boolean', name: 'booking_enabled', default: false })
   bookingEnabled!: boolean;
 
+  @Column({ type: 'boolean', name: 'widget_enabled', default: true })
+  widgetEnabled!: boolean;
+
+  @Column({ type: 'boolean', name: 'mini_site_enabled', default: true })
+  miniSiteEnabled!: boolean;
+
+  @Column({ type: 'jsonb', name: 'mini_site_config', default: '{}' })
+  miniSiteConfig!: Record<string, unknown>;
+
   @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
   createdAt!: Date;
 

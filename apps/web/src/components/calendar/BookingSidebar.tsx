@@ -2,7 +2,6 @@
 
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import toast from 'react-hot-toast';
 import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui/Button';
 import { StatusBadge, SourceBadge } from '@/components/ui/Badge';
@@ -10,19 +9,19 @@ import { Spinner } from '@/components/ui/Spinner';
 import { useBookingStore } from '@/lib/store/use-booking-store';
 import {
   useBooking,
+  useConfirmBooking,
   useCheckinBooking,
   useCheckoutBooking,
   useCancelBooking,
 } from '@/lib/hooks/use-bookings';
 import { formatMoney } from '@/lib/utils/money';
 import { formatDate, getNights } from '@/lib/utils/dates';
-import type { BookingStatus } from '@sardoba/shared';
-
 export function BookingSidebar() {
   const router = useRouter();
   const { selectedBooking, selectBooking } = useBookingStore();
   const { data: booking, isLoading } = useBooking(selectedBooking);
 
+  const confirmMut = useConfirmBooking();
   const checkinMut = useCheckinBooking();
   const checkoutMut = useCheckoutBooking();
   const cancelMut = useCancelBooking();
@@ -30,6 +29,11 @@ export function BookingSidebar() {
   const handleClose = useCallback(() => {
     selectBooking(null);
   }, [selectBooking]);
+
+  const handleConfirm = useCallback(async () => {
+    if (!booking) return;
+    await confirmMut.mutateAsync(booking.id);
+  }, [booking, confirmMut]);
 
   const handleCheckin = useCallback(async () => {
     if (!booking) return;
@@ -109,7 +113,9 @@ export function BookingSidebar() {
               <div className="p-4 bg-gray-50 rounded-lg">
                 <div className="text-sm text-gray-500 mb-1">Гость</div>
                 <div className="font-semibold text-gray-900">
-                  Гость #{booking.guestId}
+                  {(booking as any).guest
+                    ? `${(booking as any).guest.firstName} ${(booking as any).guest.lastName}`
+                    : (booking as any).guestName || `Гость #${booking.guestId}`}
                 </div>
               </div>
 
@@ -209,13 +215,13 @@ export function BookingSidebar() {
                   variant="secondary"
                   size="sm"
                   className="flex-1"
-                  onClick={handleCheckin}
-                  loading={checkinMut.isPending}
+                  onClick={handleConfirm}
+                  loading={confirmMut.isPending}
                 >
-                  Заезд
+                  Подтвердить
                 </Button>
               )}
-              {booking.status === 'confirmed' && (
+              {(booking.status === 'new' || booking.status === 'confirmed') && (
                 <Button
                   variant="secondary"
                   size="sm"

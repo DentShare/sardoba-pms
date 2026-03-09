@@ -38,7 +38,7 @@ interface AuthenticatedRequest {
 
 // ── Analytics Controller ──────────────────────────────────────────────────────
 
-@Controller('v1/properties/:propertyId/analytics')
+@Controller('properties/:propertyId/analytics')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @ApiTags('Analytics')
@@ -195,7 +195,7 @@ export class AnalyticsController {
 
 // ── Reports Controller ────────────────────────────────────────────────────────
 
-@Controller('v1/properties/:propertyId/reports')
+@Controller('properties/:propertyId/reports')
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @ApiTags('Reports')

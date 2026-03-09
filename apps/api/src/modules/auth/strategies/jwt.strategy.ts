@@ -9,8 +9,8 @@ import { UserRole } from '../../../database/entities/user.entity';
  */
 export interface JwtPayload {
   sub: number;         // user.id
-  role: UserRole;      // owner | admin | viewer
-  propertyId: number;
+  role: UserRole;      // owner | admin | viewer | super_admin
+  propertyId: number | null;
   iat: number;
   exp: number;
 }

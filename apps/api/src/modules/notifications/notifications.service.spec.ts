@@ -710,7 +710,7 @@ describe('Telegram Templates', () => {
 
       expect(message).toContain('Отмена бронирования #BK-2025-0001');
       expect(message).toContain('Guest requested cancellation');
-      expect(message).toContain('номер освобождён');
+      expect(message).toContain('Номер освобождён');
     });
   });
 
@@ -813,8 +813,8 @@ describe('Telegram Templates', () => {
         inHouseGuests: 0,
       });
 
-      expect(message).toContain('Заезды сегодня: нет');
-      expect(message).toContain('Выезды сегодня: нет');
+      expect(message).toContain('Заезды сегодня:</b> нет');
+      expect(message).toContain('Выезды сегодня:</b> нет');
     });
   });
 

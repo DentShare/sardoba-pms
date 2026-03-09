@@ -16,6 +16,13 @@ export class RlsMiddleware implements NestMiddleware {
 
   async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
     const user = (req as any).user;
+
+    // Super admin bypasses RLS — they query across all properties
+    if (user?.role === 'super_admin') {
+      next();
+      return;
+    }
+
     const propertyId = user?.propertyId ?? 0;
 
     // SET LOCAL scopes the variable to the current transaction only.

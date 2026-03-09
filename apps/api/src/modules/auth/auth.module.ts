@@ -5,6 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 
 import { User } from '../../database/entities/user.entity';
+import { Property } from '../../database/entities/property.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -12,11 +13,12 @@ import { JwtRefreshStrategy } from './strategies/jwt-refresh.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
 import { PropertyGuard } from './guards/property.guard';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
-    // Register User entity for TypeORM injection
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, Property]),
+    NotificationsModule,
 
     // Passport with default JWT strategy
     PassportModule.register({ defaultStrategy: 'jwt' }),

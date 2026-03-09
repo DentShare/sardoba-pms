@@ -22,6 +22,7 @@ export function CalendarGrid({ propertyId }: CalendarGridProps) {
 
   const [quickBooking, setQuickBooking] = useState<{
     roomId: number;
+    roomName?: string;
     date: string;
   } | null>(null);
 
@@ -43,8 +44,8 @@ export function CalendarGrid({ propertyId }: CalendarGridProps) {
   const { data, isLoading, error } = useCalendar(propertyId, dateFrom, dateTo);
 
   const handleCellClick = useCallback(
-    (roomId: number, date: string) => {
-      setQuickBooking({ roomId, date });
+    (roomId: number, date: string, roomName?: string) => {
+      setQuickBooking({ roomId, roomName, date });
     },
     [],
   );
@@ -135,7 +136,7 @@ export function CalendarGrid({ propertyId }: CalendarGridProps) {
               room={room}
               dates={dates}
               startDate={selectedDate}
-              onCellClick={handleCellClick}
+              onCellClick={(roomId, date) => handleCellClick(roomId, date, room.name)}
               onBookingClick={handleBookingClick}
             />
           ))
@@ -148,6 +149,7 @@ export function CalendarGrid({ propertyId }: CalendarGridProps) {
           open={true}
           onClose={() => setQuickBooking(null)}
           roomId={quickBooking.roomId}
+          roomNumber={quickBooking.roomName}
           date={quickBooking.date}
           propertyId={propertyId}
         />

@@ -10,6 +10,7 @@ import { Guest } from '@/database/entities/guest.entity';
 import { ChannelManagerService } from './channel-manager.service';
 import { ChannelManagerController } from './channel-manager.controller';
 import { ChannelManagerListener } from './channel-manager.listener';
+import { ChannelSyncProcessor } from './channel-sync.processor';
 import { BookingComService } from './channels/booking-com.service';
 import { AirbnbIcalService } from './channels/airbnb-ical.service';
 
@@ -29,6 +30,7 @@ import { AirbnbIcalService } from './channels/airbnb-ical.service';
   providers: [
     ChannelManagerService,
     ChannelManagerListener,
+    ChannelSyncProcessor,
     BookingComService,
     AirbnbIcalService,
   ],

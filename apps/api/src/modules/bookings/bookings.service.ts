@@ -560,6 +560,63 @@ export class BookingsService {
     return this.findOne(id, propertyId);
   }
 
+  // ── confirm ──────────────────────────────────────────────────────────────
+
+  /**
+   * Transition booking status: new -> confirmed.
+   */
+  async confirm(id: number, propertyId: number, userId: number) {
+    const booking = await this.bookingRepository.findOne({
+      where: { id, propertyId },
+    });
+
+    if (!booking) {
+      throw new SardobaException(ErrorCode.NOT_FOUND, {
+        resource: 'booking',
+        id,
+      });
+    }
+
+    if (booking.status !== 'new') {
+      throw new SardobaException(
+        ErrorCode.BOOKING_CANCELLED,
+        { current_status: booking.status },
+        `Cannot confirm booking with status '${booking.status}'`,
+      );
+    }
+
+    const oldStatus = booking.status;
+    booking.status = 'confirmed';
+
+    await this.dataSource.transaction(async (manager) => {
+      await manager.save(Booking, booking);
+
+      const history = manager.create(BookingHistory, {
+        bookingId: booking.id,
+        userId,
+        action: 'STATUS_CHANGED',
+        oldValue: { status: oldStatus },
+        newValue: { status: 'confirmed' },
+      });
+      await manager.save(BookingHistory, history);
+    });
+
+    this.eventEmitter.emit(
+      'booking.status_changed',
+      new BookingStatusChangedEvent(
+        booking.id,
+        booking.propertyId,
+        booking.roomId,
+        booking.bookingNumber,
+        oldStatus,
+        'confirmed',
+        userId,
+      ),
+    );
+
+    return this.findOne(id, propertyId);
+  }
+
   // ── checkIn ──────────────────────────────────────────────────────────────
 
   /**
@@ -819,6 +876,95 @@ export class BookingsService {
         'Check-out date must be after check-in date',
       );
     }
+  }
+
+  // ── getTodaySummary ────────────────────────────────────────────────────
+
+  /**
+   * Get today's dashboard summary for a property.
+   */
+  async getTodaySummary(propertyId: number) {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Arrivals: check_in = today, status in (new, confirmed)
+    const arrivals = await this.bookingRepository.find({
+      where: [
+        { propertyId, checkIn: today as any, status: 'new' },
+        { propertyId, checkIn: today as any, status: 'confirmed' },
+      ],
+      relations: ['guest', 'room'],
+      order: { createdAt: 'ASC' },
+    });
+
+    // Departures: check_out = today, status = checked_in
+    const departures = await this.bookingRepository.find({
+      where: { propertyId, checkOut: today as any, status: 'checked_in' },
+      relations: ['guest', 'room'],
+      order: { createdAt: 'ASC' },
+    });
+
+    // In-house: check_in <= today < check_out, status = checked_in
+    const inHouse = await this.bookingRepository
+      .createQueryBuilder('b')
+      .leftJoinAndSelect('b.guest', 'guest')
+      .leftJoinAndSelect('b.room', 'room')
+      .where('b.propertyId = :propertyId', { propertyId })
+      .andWhere('b.status = :status', { status: 'checked_in' })
+      .andWhere('b.checkIn <= :today', { today })
+      .andWhere('b.checkOut > :today', { today })
+      .orderBy('b.checkOut', 'ASC')
+      .getMany();
+
+    // Total rooms in property
+    const totalRooms = await this.dataSource
+      .getRepository(Room)
+      .count({ where: { propertyId, status: 'active' } });
+
+    // Today's revenue (payments made today)
+    const todayRevenueResult = await this.dataSource
+      .createQueryBuilder()
+      .select('COALESCE(SUM(p.amount), 0)', 'total')
+      .from('payments', 'p')
+      .innerJoin('bookings', 'b', 'p.booking_id = b.id')
+      .where('b.property_id = :propertyId', { propertyId })
+      .andWhere('p.paid_at::date = :today', { today })
+      .getRawOne();
+
+    const occupiedRooms = inHouse.length;
+    const occupancy = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
+
+    const toBookingSummary = (b: Booking) => ({
+      id: b.id,
+      booking_number: b.bookingNumber,
+      guest_name: b.guest ? `${b.guest.firstName} ${b.guest.lastName}` : null,
+      guest_phone: b.guest?.phone ?? null,
+      room_name: b.room?.name ?? null,
+      room_id: b.roomId,
+      check_in: b.checkIn,
+      check_out: b.checkOut,
+      nights: b.nights,
+      total_amount: Number(b.totalAmount),
+      paid_amount: Number(b.paidAmount),
+      status: b.status,
+      source: b.source,
+      adults: b.adults,
+      children: b.children,
+    });
+
+    return {
+      stats: {
+        total_rooms: totalRooms,
+        occupied_rooms: occupiedRooms,
+        occupancy_percent: occupancy,
+        arrivals_count: arrivals.length,
+        departures_count: departures.length,
+        in_house_count: inHouse.length,
+        today_revenue: Number(todayRevenueResult?.total || 0),
+      },
+      arrivals: arrivals.map(toBookingSummary),
+      departures: departures.map(toBookingSummary),
+      in_house: inHouse.map(toBookingSummary),
+    };
   }
 
   /**

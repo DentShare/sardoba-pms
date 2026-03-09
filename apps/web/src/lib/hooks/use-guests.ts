@@ -96,7 +96,7 @@ export function useUpdateGuest() {
  */
 export function useSearchGuests(
   query: string,
-  propertyId?: number,
+  propertyId: number,
   options?: Omit<UseQueryOptions<Guest[]>, 'queryKey' | 'queryFn'>,
 ) {
   return useQuery({

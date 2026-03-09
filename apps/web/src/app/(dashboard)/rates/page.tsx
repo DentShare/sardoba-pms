@@ -17,8 +17,7 @@ import { listRates, createRate, updateRate, deleteRate } from '@/lib/api/rates';
 import { useRooms } from '@/lib/hooks/use-rooms';
 import { formatMoney } from '@/lib/utils/money';
 import type { Rate, RateType } from '@sardoba/shared';
-
-const PROPERTY_ID = 1;
+import { usePropertyId } from '@/lib/hooks/use-property-id';
 
 const RATE_TYPE_OPTIONS = [
   { value: 'base', label: 'Базовый' },
@@ -37,14 +36,16 @@ const RATE_TYPE_COLORS: Record<RateType, { bg: string; text: string }> = {
 };
 
 export default function RatesPage() {
+  const propertyId = usePropertyId();
   const queryClient = useQueryClient();
 
   const { data: rates, isLoading } = useQuery({
-    queryKey: ['rates', PROPERTY_ID],
-    queryFn: () => listRates(PROPERTY_ID),
+    queryKey: ['rates', propertyId],
+    queryFn: () => listRates(propertyId!),
+    enabled: !!propertyId,
   });
 
-  const { data: rooms } = useRooms(PROPERTY_ID);
+  const { data: rooms } = useRooms(propertyId);
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -63,7 +64,7 @@ export default function RatesPage() {
   const createMut = useMutation({
     mutationFn: () =>
       createRate({
-        property_id: PROPERTY_ID,
+        property_id: propertyId ?? 0,
         name,
         type,
         price: price ? Math.round(Number(price) * 100) : undefined,

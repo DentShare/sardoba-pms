@@ -97,6 +97,7 @@ export class PublicBookingService {
         checkout_time: property.checkoutTime,
         timezone: property.timezone,
         locale: property.locale,
+        mini_site_config: property.miniSiteConfig || {},
       },
       rooms: activeRooms.map((room) => ({
         id: room.id,

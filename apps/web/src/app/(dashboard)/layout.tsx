@@ -41,22 +41,28 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen bg-gray-50 overflow-hidden">
+    <div className="flex h-screen bg-gray-50 overflow-hidden print:block print:h-auto print:overflow-visible">
       <OfflineBanner />
       <UpdatePrompt />
 
-      <Sidebar />
+      <div className="print:hidden">
+        <Sidebar />
+      </div>
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <Header />
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden print:overflow-visible">
+        <div className="print:hidden">
+          <Header />
+        </div>
 
-        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0 print:overflow-visible print:pb-0">
           {children}
         </main>
       </div>
 
-      <MobileTabBar />
-      <InstallPrompt />
+      <div className="print:hidden">
+        <MobileTabBar />
+        <InstallPrompt />
+      </div>
     </div>
   );
 }

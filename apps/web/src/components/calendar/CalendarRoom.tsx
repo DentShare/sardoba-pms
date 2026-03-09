@@ -4,7 +4,6 @@ import { useMemo } from 'react';
 import {
   differenceInDays,
   parseISO,
-  format,
   isWithinInterval,
   startOfDay,
 } from 'date-fns';

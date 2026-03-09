@@ -25,6 +25,11 @@ export class CalculatePriceDto {
   adults?: number;
 
   @IsOptional()
+  @IsInt()
+  @Min(0)
+  children?: number;
+
+  @IsOptional()
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => ExtraSelectionDto)

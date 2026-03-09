@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sardoba Guest House — Бронирование</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="uiux-improvements.css">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --primary:       #D4A843;
+  --primary-light:  #E8C97A;
+  --primary-dark:   #B8902F;
+  --secondary:      #1E3A5F;
+  --bg:             #FFFDF7;
+  --bg-alt:         #F5F0E8;
+  --surface:        #FFFFFF;
+  --surface-hover:  #FAFAF5;
+  --text:           #1A1A2E;
+  --text-muted:     #5A5A6E;
+  --text-subtle:    #8A8A9E;
+  --nav-bg:         rgba(26, 26, 46, 0.85);
+  --nav-text:       #F0EDE6;
+  --footer-bg:      #1A1A2E;
+  --footer-text:    #8A8A9E;
+  --input-border:   #E0DDD5;
+  --border-subtle:  #E8E5DD;
+  --card-radius:    12px;
+  --btn-radius:     12px;
+  --input-radius:   10px;
+  --card-shadow:    0 4px 24px rgba(0, 0, 0, 0.06);
+  --card-hover:     0 12px 40px rgba(0, 0, 0, 0.12);
+}
+
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'Inter', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow-x: hidden;
+}
+
+/* ── Uzbek diamond pattern background ── */
+body::before {
+  content: '';
+  position: fixed; inset: 0; z-index: -1;
+  background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23D4A843' fill-opacity='0.04'%3E%3Cpath d='M30 0l30 30-30 30L0 30z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-alt); }
+::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 3px; }
+
+/* ── NAV ── */
+nav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  padding: 0 48px; height: 68px;
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--nav-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid rgba(212, 168, 67, 0.15);
+}
+.nav-logo {
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none; color: var(--nav-text);
+  font-size: 20px; font-weight: 600; letter-spacing: -0.02em;
+}
+.nav-logo-icon {
+  width: 34px; height: 34px;
+  background: var(--primary);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--secondary); font-weight: 700; font-size: 16px;
+}
+.nav-links { display: flex; gap: 32px; list-style: none; }
+.nav-links a {
+  font-size: 13px; font-weight: 500; color: rgba(240,237,230,0.6);
+  text-decoration: none; transition: color .2s;
+}
+.nav-links a:hover { color: var(--primary); }
+.nav-right { display: flex; align-items: center; gap: 14px; }
+.lang-btn {
+  font-size: 12px; color: rgba(240,237,230,0.5);
+  background: none; border: none; cursor: pointer;
+}
+.btn-book-nav {
+  padding: 10px 24px;
+  background: var(--primary); color: var(--secondary);
+  font-weight: 600; font-size: 13px; border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  transition: background .2s, transform .15s;
+  font-family: 'Inter', sans-serif;
+}
+.btn-book-nav:hover { background: var(--primary-light); transform: translateY(-1px); }
+
+/* ── HERO ── */
+.hero {
+  position: relative;
+  min-height: 70vh;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  text-align: center;
+  padding: 120px 48px 80px;
+  overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(26,26,46,0.7) 0%, rgba(30,58,95,0.6) 50%, rgba(21,43,71,0.7) 100%),
+              linear-gradient(180deg, #1A1A2E 0%, #1E3A5F 50%, #152B47 100%);
+}
+.hero-badge {
+  position: relative; z-index: 2;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 20px;
+  background: rgba(212, 168, 67, 0.15);
+  border: 1px solid rgba(212, 168, 67, 0.3);
+  border-radius: 999px;
+  font-size: 12px; font-weight: 500; letter-spacing: 0.05em;
+  color: var(--primary); margin-bottom: 24px;
+}
+.hero-badge svg { width: 14px; height: 14px; }
+.hero-title {
+  position: relative; z-index: 2;
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 700; line-height: 1.1;
+  color: #fff; margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+.hero-title span { color: var(--primary); }
+.hero-subtitle {
+  position: relative; z-index: 2;
+  font-size: 16px; font-weight: 400; color: rgba(255,255,255,0.6);
+  max-width: 520px; line-height: 1.6; margin-bottom: 40px;
+}
+.hero-contacts {
+  position: relative; z-index: 2;
+  display: flex; gap: 24px; flex-wrap: wrap; justify-content: center;
+}
+.hero-contact {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 13px; color: rgba(255,255,255,0.5);
+}
+.hero-contact svg { width: 14px; height: 14px; color: var(--primary); }
+
+/* ── SECTION ── */
+.section {
+  padding: 100px 48px;
+  max-width: 1200px; margin: 0 auto;
+}
+.section-header {
+  text-align: center; margin-bottom: 56px;
+}
+.section-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0.06em;
+  color: var(--primary); text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.section-tag::before, .section-tag::after {
+  content: ''; width: 24px; height: 1px;
+  background: var(--primary); opacity: 0.4;
+}
+.section-title {
+  font-size: clamp(28px, 3vw, 42px);
+  font-weight: 700; line-height: 1.2; color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+/* ── ABOUT ── */
+.about-text {
+  max-width: 700px; margin: 0 auto;
+  font-size: 15px; line-height: 1.8; color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── ROOM CARDS ── */
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+}
+.room-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  overflow: hidden;
+  box-shadow: var(--card-shadow);
+  transition: box-shadow .3s, transform .3s;
+}
+.room-card:hover {
+  box-shadow: var(--card-hover);
+  transform: translateY(-4px);
+}
+.room-card-img {
+  height: 200px;
+  background: linear-gradient(135deg, #1E3A5F 0%, #2A4F7F 50%, #152B47 100%);
+  position: relative;
+}
+.room-card-img::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(circle at 70% 40%, rgba(212,168,67,0.15) 0%, transparent 50%);
+}
+.room-badge {
+  position: absolute; top: 12px; left: 12px;
+  padding: 4px 12px;
+  background: var(--primary);
+  color: var(--secondary);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.05em;
+  border-radius: 999px;
+}
+.room-card-body { padding: 20px; }
+.room-name {
+  font-size: 18px; font-weight: 600; margin-bottom: 8px; color: var(--text);
+}
+.room-amenities {
+  display: flex; flex-wrap: wrap; gap: 12px;
+  margin-bottom: 16px;
+}
+.room-amenity {
+  font-size: 12px; color: var(--text-subtle);
+  display: flex; align-items: center; gap: 4px;
+}
+.room-amenity svg { width: 14px; height: 14px; }
+.room-footer {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+}
+.room-price {
+  font-size: 22px; font-weight: 700; color: var(--primary);
+}
+.room-price-label { font-size: 12px; color: var(--text-subtle); font-weight: 400; }
+.room-btn {
+  padding: 10px 20px;
+  background: var(--secondary); color: #fff;
+  font-size: 13px; font-weight: 600; border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  transition: background .2s;
+  font-family: 'Inter', sans-serif;
+}
+.room-btn:hover { background: #2A4F7F; }
+
+/* ── EXTRAS ── */
+.extras-grid {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px;
+}
+.extra-card {
+  display: flex; align-items: center; gap: 16px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  transition: border-color .2s;
+  cursor: pointer;
+}
+.extra-card:hover { border-color: var(--primary); }
+.extra-icon {
+  width: 44px; height: 44px; flex-shrink: 0;
+  background: var(--bg-alt);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary);
+}
+.extra-icon svg { width: 20px; height: 20px; }
+.extra-name { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+.extra-price { font-size: 13px; color: var(--primary); font-weight: 600; }
+
+/* ── BOOKING FORM ── */
+.booking-section {
+  padding: 100px 48px;
+  background: var(--bg-alt);
+}
+.booking-layout {
+  display: grid; grid-template-columns: 1fr 420px; gap: 64px;
+  max-width: 1100px; margin: 0 auto;
+  align-items: start;
+}
+.booking-info-tag {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 6px 14px;
+  background: rgba(212,168,67,0.1);
+  border: 1px solid rgba(212,168,67,0.2);
+  border-radius: 999px;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  color: var(--primary); text-transform: uppercase;
+  margin-bottom: 20px;
+}
+.booking-info-tag::before {
+  content: ''; width: 6px; height: 6px;
+  background: var(--primary); border-radius: 50%;
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: .3; }
+}
+.booking-title {
+  font-size: 36px; font-weight: 700; line-height: 1.2;
+  margin-bottom: 16px; color: var(--text);
+}
+.booking-title span { color: var(--primary); }
+.booking-desc {
+  font-size: 15px; color: var(--text-muted); line-height: 1.7;
+  margin-bottom: 36px;
+}
+.perks { display: flex; flex-direction: column; gap: 20px; }
+.perk {
+  display: flex; align-items: flex-start; gap: 14px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.perk:last-child { border-bottom: none; }
+.perk-icon {
+  width: 40px; height: 40px; flex-shrink: 0;
+  background: rgba(212,168,67,0.1);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary);
+}
+.perk-icon svg { width: 18px; height: 18px; }
+.perk-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.perk-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+/* Form card */
+.form-card {
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  padding: 32px;
+  box-shadow: var(--card-shadow);
+}
+.form-card-title {
+  font-size: 22px; font-weight: 700; margin-bottom: 4px;
+}
+.form-card-subtitle {
+  font-size: 13px; color: var(--text-muted); margin-bottom: 28px;
+}
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+.form-group { margin-bottom: 12px; }
+.form-label {
+  display: block; font-size: 12px; font-weight: 600; color: var(--text);
+  margin-bottom: 6px;
+}
+.form-input, .form-select {
+  width: 100%; padding: 12px 14px;
+  background: var(--surface);
+  border: 1px solid var(--input-border);
+  border-radius: var(--input-radius);
+  font-size: 14px; color: var(--text);
+  font-family: 'Inter', sans-serif;
+  outline: none; transition: border-color .2s, box-shadow .2s;
+}
+.form-input:focus, .form-select:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(212,168,67,0.15);
+}
+.form-input::placeholder { color: var(--text-subtle); }
+.form-select {
+  cursor: pointer; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg width='12' height='7' viewBox='0 0 12 7' fill='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M1 1L6 6L11 1' stroke='%23D4A843' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 14px center;
+}
+.form-total {
+  margin: 20px 0; padding: 16px;
+  background: var(--bg-alt);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.form-total-label { font-size: 13px; color: var(--text-muted); }
+.form-total-nights { font-size: 12px; color: var(--text-subtle); margin-top: 2px; }
+.form-total-amount { font-size: 24px; font-weight: 700; color: var(--primary); }
+.btn-submit {
+  width: 100%; padding: 16px;
+  background: var(--primary); color: var(--secondary);
+  font-family: 'Inter', sans-serif;
+  font-size: 14px; font-weight: 700;
+  border: none; cursor: pointer;
+  border-radius: var(--btn-radius);
+  transition: background .2s, transform .15s;
+  display: flex; align-items: center; justify-content: center; gap: 10px;
+}
+.btn-submit:hover { background: var(--primary-light); transform: translateY(-1px); }
+.btn-submit svg { width: 16px; height: 16px; }
+.form-note {
+  margin-top: 14px; font-size: 12px; color: var(--text-subtle);
+  text-align: center; line-height: 1.5;
+}
+.form-note a { color: var(--primary); text-decoration: none; }
+
+/* ── CONTACTS ── */
+.contacts-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px;
+}
+.contact-card {
+  padding: 28px 24px;
+  background: var(--surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--card-radius);
+  box-shadow: var(--card-shadow);
+  transition: border-color .2s;
+}
+.contact-card:hover { border-color: var(--primary); }
+.contact-icon {
+  width: 40px; height: 40px; margin-bottom: 16px;
+  background: var(--bg-alt);
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--primary);
+}
+.contact-icon svg { width: 18px; height: 18px; }
+.contact-label {
+  font-size: 11px; font-weight: 600; letter-spacing: 0.06em;
+  text-transform: uppercase; color: var(--text-subtle); margin-bottom: 6px;
+}
+.contact-value { font-size: 14px; color: var(--text); line-height: 1.5; }
+.contact-value a { color: var(--text); text-decoration: none; transition: color .2s; }
+.contact-value a:hover { color: var(--primary); }
+
+/* ── FOOTER ── */
+footer {
+  padding: 28px 48px;
+  background: var(--footer-bg);
+  display: flex; align-items: center; justify-content: space-between;
+  border-top: 1px solid rgba(212,168,67,0.1);
+}
+.footer-brand { font-size: 16px; font-weight: 600; color: var(--nav-text); }
+.footer-copy { font-size: 12px; color: var(--footer-text); }
+.footer-powered {
+  font-size: 11px; color: var(--footer-text);
+  display: flex; align-items: center; gap: 4px;
+}
+.footer-powered span { color: var(--primary); font-weight: 600; }
+
+/* ── ANIMATIONS ── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate { animation: fadeUp .7s ease both; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 900px) {
+  nav { padding: 0 20px; }
+  .nav-links { display: none; }
+  .hero { min-height: 60vh; padding: 100px 20px 60px; }
+  .section { padding: 64px 20px; }
+  .rooms-grid { grid-template-columns: 1fr; }
+  .extras-grid { grid-template-columns: 1fr; }
+  .booking-section { padding: 64px 20px; }
+  .booking-layout { grid-template-columns: 1fr; gap: 40px; }
+  .contacts-grid { grid-template-columns: 1fr 1fr; }
+  footer { flex-direction: column; gap: 10px; text-align: center; padding: 20px; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">
+    <div class="nav-logo-icon">S</div>
+    Sardoba Guest House
+  </a>
+  <ul class="nav-links">
+    <li><a href="#">Главная</a></li>
+    <li><a href="#rooms">Номера</a></li>
+    <li><a href="#booking">Бронирование</a></li>
+    <li><a href="#contacts">Контакты</a></li>
+  </ul>
+  <div class="nav-right">
+    <button class="lang-btn">RU</button>
+    <button class="btn-book-nav" onclick="document.getElementById('booking').scrollIntoView({behavior:'smooth'})">Забронировать</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-badge">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+    Самарканд, Узбекистан
+  </div>
+  <h1 class="hero-title">Sardoba<br><span>Guest House</span></h1>
+  <p class="hero-subtitle">Уютный гостевой дом в самом сердце древнего Самарканда. Откройте для себя магию Шёлкового пути.</p>
+  <div class="hero-contacts">
+    <div class="hero-contact">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      ул. Регистан, 4
+    </div>
+    <div class="hero-contact">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      +998 90 123 45 67
+    </div>
+  </div>
+</section>
+
+<!-- ABOUT -->
+<div class="section" id="about">
+  <div class="section-header">
+    <div class="section-tag">О нашем отеле</div>
+    <h2 class="section-title">Добро пожаловать в Sardoba</h2>
+  </div>
+  <p class="about-text">
+    Sardoba Guest House расположен в историческом центре Самарканда, в нескольких минутах ходьбы от площади Регистан.
+    Мы предлагаем комфортные номера, тёплую атмосферу и незабываемые впечатления для путешественников со всего мира.
+    Каждое утро наших гостей ждёт богатый завтрак с национальными блюдами.
+  </p>
+</div>
+
+<!-- ROOMS -->
+<div class="section" id="rooms">
+  <div class="section-header">
+    <div class="section-tag">Наши номера</div>
+    <h2 class="section-title">Выберите номер для проживания</h2>
+  </div>
+
+  <div class="rooms-grid">
+    <div class="room-card">
+      <div class="room-card-img">
+        <div class="room-badge">Стандарт</div>
+      </div>
+      <div class="room-card-body">
+        <div class="room-name">Стандартный двухместный</div>
+        <div class="room-amenities">
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> 22 м²</span>
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 2 гостя</span>
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><circle cx="12" cy="20" r="1"/></svg> Wi-Fi</span>
+        </div>
+        <div class="room-footer">
+          <div class="room-price">350 000 <span class="room-price-label">сум/ночь</span></div>
+          <button class="room-btn">Выбрать</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="room-card">
+      <div class="room-card-img" style="background: linear-gradient(135deg, #1E3A5F 0%, #D4A843 100%);">
+        <div class="room-badge">Делюкс</div>
+      </div>
+      <div class="room-card-body">
+        <div class="room-name">Семейный делюкс</div>
+        <div class="room-amenities">
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> 38 м²</span>
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 4 гостя</span>
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><circle cx="12" cy="20" r="1"/></svg> Wi-Fi</span>
+        </div>
+        <div class="room-footer">
+          <div class="room-price">600 000 <span class="room-price-label">сум/ночь</span></div>
+          <button class="room-btn">Выбрать</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="room-card">
+      <div class="room-card-img" style="background: linear-gradient(135deg, #152B47 0%, #1E3A5F 50%, #D4A843 100%);">
+        <div class="room-badge">Люкс</div>
+      </div>
+      <div class="room-card-body">
+        <div class="room-name">Президентский люкс</div>
+        <div class="room-amenities">
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg> 56 м²</span>
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> 2 гостя</span>
+          <span class="room-amenity"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><circle cx="12" cy="20" r="1"/></svg> Wi-Fi</span>
+        </div>
+        <div class="room-footer">
+          <div class="room-price">1 200 000 <span class="room-price-label">сум/ночь</span></div>
+          <button class="room-btn">Выбрать</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EXTRAS -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-tag">Дополнительные услуги</div>
+    <h2 class="section-title">Сделайте отдых незабываемым</h2>
+  </div>
+  <div class="extras-grid">
+    <div class="extra-card">
+      <div class="extra-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg></div>
+      <div><div class="extra-name">Завтрак</div><div class="extra-price">80 000 сум/чел</div></div>
+    </div>
+    <div class="extra-card">
+      <div class="extra-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg></div>
+      <div><div class="extra-name">Трансфер из аэропорта</div><div class="extra-price">150 000 сум</div></div>
+    </div>
+    <div class="extra-card">
+      <div class="extra-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div><div class="extra-name">Ранний заезд</div><div class="extra-price">100 000 сум</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKING FORM -->
+<section class="booking-section" id="booking">
+  <div class="booking-layout">
+    <div class="booking-info">
+      <div class="booking-info-tag">Прямое бронирование</div>
+      <h2 class="booking-title">Забронируйте<br><span>без комиссии</span></h2>
+      <p class="booking-desc">Бронируйте напрямую — это всегда выгоднее, чем через агрегаторы. Мы гарантируем лучшую цену и персональный подход.</p>
+      <div class="perks">
+        <div class="perk">
+          <div class="perk-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          <div><div class="perk-title">Лучшая гарантированная цена</div><div class="perk-desc">Прямое бронирование дешевле Booking.com и Airbnb</div></div>
+        </div>
+        <div class="perk">
+          <div class="perk-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+          <div><div class="perk-title">Подтверждение в WhatsApp</div><div class="perk-desc">Мгновенно получите детали брони на ваш телефон</div></div>
+        </div>
+        <div class="perk">
+          <div class="perk-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg></div>
+          <div><div class="perk-title">Гибкое изменение дат</div><div class="perk-desc">Перенос заезда за 24 часа без штрафа</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="form-card">
+      <div class="form-card-title">Оформить бронь</div>
+      <div class="form-card-subtitle">Заполните форму — мы свяжемся в течение 5 минут</div>
+      <div class="form-row">
+        <div><label class="form-label">Дата заезда</label><input class="form-input" type="date" id="checkin" oninput="calcTotal()"></div>
+        <div><label class="form-label">Дата выезда</label><input class="form-input" type="date" id="checkout" oninput="calcTotal()"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Тип номера</label>
+        <select class="form-select" id="room-select" onchange="calcTotal()">
+          <option value="350000">Стандартный двухместный — 350 000 сум/ночь</option>
+          <option value="600000">Семейный делюкс — 600 000 сум/ночь</option>
+          <option value="1200000">Президентский люкс — 1 200 000 сум/ночь</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div><label class="form-label">Имя</label><input class="form-input" type="text" placeholder="Алишер"></div>
+        <div><label class="form-label">Фамилия</label><input class="form-input" type="text" placeholder="Навоий"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Телефон (WhatsApp)</label>
+        <input class="form-input" type="tel" placeholder="+998 90 123 45 67">
+      </div>
+      <div class="form-total">
+        <div>
+          <div class="form-total-label">Итого к оплате</div>
+          <div class="form-total-nights" id="nights-label">Выберите даты</div>
+        </div>
+        <div class="form-total-amount" id="total-amount">—</div>
+      </div>
+      <button class="btn-submit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17l-5-5"/></svg>
+        Подтвердить бронирование
+      </button>
+      <div class="form-note">Нажимая кнопку, вы соглашаетесь с <a href="#">условиями</a>. Оплата при заезде.</div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACTS -->
+<div class="section" id="contacts">
+  <div class="section-header">
+    <div class="section-tag">Контакты</div>
+    <h2 class="section-title">Свяжитесь с нами</h2>
+  </div>
+  <div class="contacts-grid">
+    <div class="contact-card">
+      <div class="contact-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
+      <div class="contact-label">Адрес</div>
+      <div class="contact-value">ул. Регистан, 4<br>Самарканд</div>
+    </div>
+    <div class="contact-card">
+      <div class="contact-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2A19.79 19.79 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg></div>
+      <div class="contact-label">Телефон</div>
+      <div class="contact-value"><a href="tel:+998901234567">+998 90 123 45 67</a></div>
+    </div>
+    <div class="contact-card">
+      <div class="contact-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg></div>
+      <div class="contact-label">Email</div>
+      <div class="contact-value"><a href="mailto:info@sardoba.uz">info@sardoba.uz</a></div>
+    </div>
+    <div class="contact-card">
+      <div class="contact-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+      <div class="contact-label">Время работы</div>
+      <div class="contact-value">Заезд: с 14:00<br>Выезд: до 12:00</div>
+    </div>
+  </div>
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <div class="footer-brand">Sardoba Guest House</div>
+  <div class="footer-copy">© 2025 · Все права защищены</div>
+  <div class="footer-powered">Работает на <span>Sardoba PMS</span></div>
+</footer>
+
+<script>
+function calcTotal() {
+  const ci = document.getElementById('checkin').value;
+  const co = document.getElementById('checkout').value;
+  const price = parseInt(document.getElementById('room-select').value);
+  if (ci && co) {
+    const nights = Math.round((new Date(co) - new Date(ci)) / 86400000);
+    if (nights > 0) {
+      document.getElementById('total-amount').textContent = (nights * price).toLocaleString('ru-RU') + ' сум';
+      document.getElementById('nights-label').textContent = nights + ' ' + (nights === 1 ? 'ночь' : nights < 5 ? 'ночи' : 'ночей');
+      return;
+    }
+  }
+  document.getElementById('total-amount').textContent = '—';
+  document.getElementById('nights-label').textContent = 'Выберите даты';
+}
+
+// Scroll reveal
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.room-card, .extra-card, .contact-card, .perk').forEach(el => {
+  el.style.opacity = '0'; el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity .5s ease, transform .5s ease';
+  observer.observe(el);
+});
+</script>
+</body>
+</html>

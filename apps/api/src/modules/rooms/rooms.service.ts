@@ -5,6 +5,7 @@ import { Room } from '@/database/entities/room.entity';
 import { RoomBlock } from '@/database/entities/room-block.entity';
 import { Booking } from '@/database/entities/booking.entity';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { CacheService } from '@/modules/cache/cache.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
 import { RoomQueryDto } from './dto/room-query.dto';
@@ -19,6 +20,7 @@ export class RoomsService {
     private readonly roomBlockRepository: Repository<RoomBlock>,
     @InjectRepository(Booking)
     private readonly bookingRepository: Repository<Booking>,
+    private readonly cacheService: CacheService,
   ) {}
 
   // ── List rooms with pagination and filters ────────────────────────────────
@@ -204,6 +206,22 @@ export class RoomsService {
       );
     }
 
+    // Cache availability for 60 seconds — invalidated on booking/block changes
+    const cacheKey = `avail:${roomId}:${from}:${to}`;
+    return this.cacheService.getOrSet(cacheKey, 60, () =>
+      this.computeAvailability(roomId, from, to),
+    );
+  }
+
+  private async computeAvailability(
+    roomId: number,
+    from: string,
+    to: string,
+  ): Promise<{
+    available: boolean;
+    blocked_dates: string[];
+    booked_dates: string[];
+  }> {
     // Find overlapping blocks
     const blocks = await this.roomBlockRepository
       .createQueryBuilder('block')
@@ -344,6 +362,17 @@ export class RoomsService {
     }
 
     return room;
+  }
+
+  // ── Add photo URL to room's photos array ──────────────────────────────────
+
+  async addPhoto(roomId: number, url: string): Promise<void> {
+    const room = await this.roomRepository.findOne({ where: { id: roomId } });
+    if (!room) {
+      throw new SardobaException(ErrorCode.NOT_FOUND, { resource: 'room', id: roomId });
+    }
+    room.photos = [...(room.photos || []), url];
+    await this.roomRepository.save(room);
   }
 
   // ── Private helpers ───────────────────────────────────────────────────────

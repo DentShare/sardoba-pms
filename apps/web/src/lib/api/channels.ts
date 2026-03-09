@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { Channel, RoomMapping, SyncLog, PaginatedResponse } from '@sardoba/shared';
+import type { Channel, ChannelType, RoomMapping, SyncLog, PaginatedResponse } from '@sardoba/shared';
 
 export interface UpdateMappingDto {
   room_id: number;
@@ -7,14 +7,60 @@ export interface UpdateMappingDto {
   external_id: string;
 }
 
+export interface CreateChannelDto {
+  type: ChannelType;
+  is_active?: boolean;
+  credentials: Record<string, string>;
+}
+
+export interface UpdateChannelDto {
+  is_active?: boolean;
+  credentials?: Record<string, string>;
+}
+
 /**
  * List all channels for a property.
  */
 export async function listChannels(propertyId: number): Promise<Channel[]> {
-  const { data } = await api.get<Channel[]>('/channels', {
-    params: { property_id: propertyId },
-  });
+  const { data } = await api.get(
+    `/properties/${propertyId}/channels`,
+  );
+  return data?.data ?? (Array.isArray(data) ? data : []);
+}
+
+/**
+ * Create a new channel for a property.
+ */
+export async function createChannel(
+  propertyId: number,
+  dto: CreateChannelDto,
+): Promise<Channel> {
+  const { data } = await api.post<Channel>(
+    `/properties/${propertyId}/channels`,
+    dto,
+  );
   return data;
+}
+
+/**
+ * Update channel settings (credentials, active status).
+ */
+export async function updateChannel(
+  channelId: number,
+  dto: UpdateChannelDto,
+): Promise<Channel> {
+  const { data } = await api.put<Channel>(
+    `/channels/${channelId}`,
+    dto,
+  );
+  return data;
+}
+
+/**
+ * Deactivate (soft-delete) a channel.
+ */
+export async function deactivateChannel(channelId: number): Promise<void> {
+  await api.delete(`/channels/${channelId}`);
 }
 
 /**
@@ -33,19 +79,34 @@ export async function syncChannel(
  * Get room mappings for a channel.
  */
 export async function getMappings(channelId: number): Promise<RoomMapping[]> {
-  const { data } = await api.get<RoomMapping[]>(
+  const { data } = await api.get(
     `/channels/${channelId}/mappings`,
+  );
+  return data?.data ?? (Array.isArray(data) ? data : []);
+}
+
+/**
+ * Update a single room mapping for a channel.
+ */
+export async function updateMapping(dto: UpdateMappingDto): Promise<RoomMapping[]> {
+  const { data } = await api.put<RoomMapping[]>(
+    `/channels/${dto.channel_id}/mappings`,
+    { mappings: [dto] },
   );
   return data;
 }
 
 /**
- * Create or update a room mapping.
+ * Update room mappings for a channel.
  */
-export async function updateMapping(
-  dto: UpdateMappingDto,
-): Promise<RoomMapping> {
-  const { data } = await api.put<RoomMapping>('/channels/mappings', dto);
+export async function updateMappings(
+  channelId: number,
+  mappings: UpdateMappingDto[],
+): Promise<RoomMapping[]> {
+  const { data } = await api.put<RoomMapping[]>(
+    `/channels/${channelId}/mappings`,
+    { mappings },
+  );
   return data;
 }
 

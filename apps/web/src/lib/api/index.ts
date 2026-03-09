@@ -5,3 +5,6 @@ export * as ratesApi from './rates';
 export * as paymentsApi from './payments';
 export * as analyticsApi from './analytics';
 export * as channelsApi from './channels';
+export * as propertyApi from './property';
+export * as usersApi from './users';
+export * as floorPlansApi from './floor-plans';

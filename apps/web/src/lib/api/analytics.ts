@@ -50,14 +50,13 @@ export interface ExportParams extends AnalyticsParams {
   sections: string[];
 }
 
-function buildParams(params: AnalyticsParams): Record<string, unknown> {
+function buildQueryParams(params: AnalyticsParams): Record<string, unknown> {
   const result: Record<string, unknown> = {
-    property_id: params.propertyId,
     date_from: params.dateFrom,
     date_to: params.dateTo,
   };
-  if (params.compareDateFrom) result.compare_date_from = params.compareDateFrom;
-  if (params.compareDateTo) result.compare_date_to = params.compareDateTo;
+  if (params.compareDateFrom) result.compare_from = params.compareDateFrom;
+  if (params.compareDateTo) result.compare_to = params.compareDateTo;
   return result;
 }
 
@@ -67,9 +66,10 @@ function buildParams(params: AnalyticsParams): Record<string, unknown> {
 export async function getSummary(
   params: AnalyticsParams,
 ): Promise<AnalyticsSummary> {
-  const { data } = await api.get<AnalyticsSummary>('/analytics/summary', {
-    params: buildParams(params),
-  });
+  const { data } = await api.get<AnalyticsSummary>(
+    `/properties/${params.propertyId}/analytics/summary`,
+    { params: buildQueryParams(params) },
+  );
   return data;
 }
 
@@ -79,9 +79,10 @@ export async function getSummary(
 export async function getOccupancy(
   params: AnalyticsParams,
 ): Promise<OccupancyData[]> {
-  const { data } = await api.get<OccupancyData[]>('/analytics/occupancy', {
-    params: buildParams(params),
-  });
+  const { data } = await api.get<OccupancyData[]>(
+    `/properties/${params.propertyId}/analytics/occupancy`,
+    { params: buildQueryParams(params) },
+  );
   return data;
 }
 
@@ -91,9 +92,10 @@ export async function getOccupancy(
 export async function getRevenue(
   params: AnalyticsParams,
 ): Promise<RevenueData[]> {
-  const { data } = await api.get<RevenueData[]>('/analytics/revenue', {
-    params: buildParams(params),
-  });
+  const { data } = await api.get<RevenueData[]>(
+    `/properties/${params.propertyId}/analytics/revenue`,
+    { params: buildQueryParams(params) },
+  );
   return data;
 }
 
@@ -103,9 +105,10 @@ export async function getRevenue(
 export async function getSources(
   params: AnalyticsParams,
 ): Promise<SourceData[]> {
-  const { data } = await api.get<SourceData[]>('/analytics/sources', {
-    params: buildParams(params),
-  });
+  const { data } = await api.get<SourceData[]>(
+    `/properties/${params.propertyId}/analytics/sources`,
+    { params: buildQueryParams(params) },
+  );
   return data;
 }
 
@@ -115,9 +118,10 @@ export async function getSources(
 export async function getGuestStats(
   params: AnalyticsParams,
 ): Promise<GuestStatsData> {
-  const { data } = await api.get<GuestStatsData>('/analytics/guests', {
-    params: buildParams(params),
-  });
+  const { data } = await api.get<GuestStatsData>(
+    `/properties/${params.propertyId}/analytics/guests`,
+    { params: buildQueryParams(params) },
+  );
   return data;
 }
 
@@ -127,9 +131,10 @@ export async function getGuestStats(
 export async function getRoomStats(
   params: AnalyticsParams,
 ): Promise<RoomStatsData[]> {
-  const { data } = await api.get<RoomStatsData[]>('/analytics/rooms', {
-    params: buildParams(params),
-  });
+  const { data } = await api.get<RoomStatsData[]>(
+    `/properties/${params.propertyId}/analytics/rooms`,
+    { params: buildQueryParams(params) },
+  );
   return data;
 }
 
@@ -137,13 +142,17 @@ export async function getRoomStats(
  * Export analytics report.
  */
 export async function exportReport(params: ExportParams): Promise<Blob> {
-  const { data } = await api.get('/analytics/export', {
-    params: {
-      ...buildParams(params),
-      format: params.format,
-      sections: params.sections.join(','),
+  const { data } = await api.get(
+    `/properties/${params.propertyId}/reports/export`,
+    {
+      params: {
+        date_from: params.dateFrom,
+        date_to: params.dateTo,
+        format: params.format,
+        sections: params.sections.join(','),
+      },
+      responseType: 'blob',
     },
-    responseType: 'blob',
-  });
+  );
   return data;
 }

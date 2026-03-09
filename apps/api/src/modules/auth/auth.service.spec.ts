@@ -7,6 +7,7 @@ import * as bcrypt from 'bcrypt';
 
 import { AuthService } from './auth.service';
 import { User, UserRole } from '../../database/entities/user.entity';
+import { Property } from '../../database/entities/property.entity';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
 
 // ─── Test Helpers ─────────────────────────────────────────────────────────────
@@ -62,11 +63,13 @@ const createMockConfigService = () => ({
 describe('AuthService', () => {
   let service: AuthService;
   let userRepository: ReturnType<typeof createMockRepository>;
+  let propertyRepository: ReturnType<typeof createMockRepository>;
   let jwtService: ReturnType<typeof createMockJwtService>;
   let configService: ReturnType<typeof createMockConfigService>;
 
   beforeEach(async () => {
     userRepository = createMockRepository();
+    propertyRepository = createMockRepository();
     jwtService = createMockJwtService();
     configService = createMockConfigService();
 
@@ -79,6 +82,7 @@ describe('AuthService', () => {
       providers: [
         AuthService,
         { provide: getRepositoryToken(User), useValue: userRepository },
+        { provide: getRepositoryToken(Property), useValue: propertyRepository },
         { provide: JwtService, useValue: jwtService },
         { provide: ConfigService, useValue: configService },
       ],

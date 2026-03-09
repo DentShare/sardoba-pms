@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useScrollReveal } from '@/lib/hooks';
 import { CheckIcon, SparkleIcon, ArrowRightIcon } from './icons';
 
@@ -66,7 +66,7 @@ export function Pricing() {
   const { ref: headerRef, isVisible: headerVisible } = useScrollReveal();
 
   return (
-    <section id="pricing" className="py-24 lg:py-32 bg-sardoba-cream uzbek-pattern">
+    <section id="pricing" className="py-24 lg:py-32 bg-sardoba-cream uzbek-pattern section-glow">
       <div className="max-w-7xl mx-auto px-6">
         {/* Header */}
         <div
@@ -86,7 +86,7 @@ export function Pricing() {
           </p>
 
           {/* Toggle */}
-          <div className="inline-flex items-center gap-3 p-1.5 rounded-xl bg-white border border-sardoba-sand-dark/30">
+          <div className="inline-flex items-center gap-3 p-1.5 rounded-xl bg-white border border-sardoba-sand-dark/30 shadow-card">
             <button
               onClick={() => setIsYearly(false)}
               className={`px-5 py-2 rounded-lg text-sm font-medium transition-all duration-300 cursor-pointer ${
@@ -139,80 +139,113 @@ function PricingCard({
   index: number;
 }) {
   const { ref, isVisible } = useScrollReveal(0.1);
+  const cardRef = useRef<HTMLDivElement>(null);
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const price = isYearly ? plan.priceYearly : plan.priceMonthly;
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!cardRef.current) return;
+    const rect = cardRef.current.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    setTilt({ x: y * -6, y: x * 6 });
+  };
+
+  const handleMouseLeave = () => {
+    setTilt({ x: 0, y: 0 });
+  };
 
   return (
     <div
       ref={ref}
-      className={`relative rounded-2xl p-8 transition-all duration-700 cursor-pointer
-        ${plan.popular
-          ? 'bg-sardoba-dark text-white shadow-2xl scale-[1.03] border-2 border-sardoba-gold/30'
-          : 'bg-white text-sardoba-dark border border-sardoba-sand-dark/30 hover:shadow-card-hover hover:-translate-y-1'
-        }
-        ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'}`}
+      className={`transition-all duration-700 ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+      }`}
       style={{ transitionDelay: `${index * 120}ms` }}
     >
-      {/* Popular badge */}
-      {plan.popular && (
-        <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-          <div className="flex items-center gap-1 px-4 py-1.5 rounded-full bg-sardoba-gold text-sardoba-dark text-xs font-bold shadow-glow-gold">
-            <SparkleIcon size={12} />
-            Популярный
-          </div>
-        </div>
-      )}
-
-      <div className="mb-6">
-        <h3 className={`text-xl font-bold mb-1 ${plan.popular ? 'text-white' : 'text-sardoba-dark'}`}>
-          {plan.name}
-        </h3>
-        <p className={`text-sm ${plan.popular ? 'text-white/50' : 'text-sardoba-dark/40'}`}>
-          {plan.desc}
-        </p>
-      </div>
-
-      {/* Price */}
-      <div className="mb-6">
-        <div className="flex items-baseline gap-1">
-          <span className={`text-4xl font-bold ${plan.popular ? 'text-sardoba-gold' : 'text-sardoba-dark'}`}>
-            {formatPrice(price)}
-          </span>
-          <span className={`text-sm ${plan.popular ? 'text-white/40' : 'text-sardoba-dark/40'}`}>
-            сум/мес
-          </span>
-        </div>
-        <p className={`text-xs mt-1 ${plan.popular ? 'text-white/30' : 'text-sardoba-dark/30'}`}>
-          {plan.rooms}
-        </p>
-      </div>
-
-      {/* Features */}
-      <ul className="space-y-3 mb-8">
-        {plan.features.map((feature) => (
-          <li key={feature} className="flex items-start gap-2">
-            <CheckIcon
-              size={18}
-              className={`mt-0.5 shrink-0 ${plan.popular ? 'text-sardoba-gold' : 'text-emerald-500'}`}
-            />
-            <span className={`text-sm ${plan.popular ? 'text-white/70' : 'text-sardoba-dark/60'}`}>
-              {feature}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      {/* CTA */}
-      <a
-        href="#contact"
-        className={`flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 cursor-pointer ${
-          plan.popular
-            ? 'bg-sardoba-gold text-sardoba-dark hover:bg-sardoba-gold-light hover:shadow-glow-gold hover:-translate-y-0.5'
-            : 'border-2 border-sardoba-dark/10 text-sardoba-dark hover:border-sardoba-gold hover:text-sardoba-gold hover:-translate-y-0.5'
-        }`}
+      <div
+        ref={cardRef}
+        className={`relative rounded-2xl p-8 cursor-pointer h-full
+          ${plan.popular
+            ? 'bg-sardoba-dark text-white shadow-premium border-2 border-sardoba-gold/30'
+            : 'bg-white text-sardoba-dark border border-sardoba-sand-dark/30 hover:shadow-card-hover'
+          }`}
+        style={{
+          transform: `perspective(800px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+          transition: 'transform 0.2s ease-out',
+        }}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
       >
-        {plan.cta}
-        <ArrowRightIcon size={16} />
-      </a>
+        {/* Popular badge */}
+        {plan.popular && (
+          <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+            <div className="flex items-center gap-1 px-4 py-1.5 rounded-full bg-sardoba-gold text-sardoba-dark text-xs font-bold shadow-glow-gold animate-glow-pulse">
+              <SparkleIcon size={12} />
+              Популярный
+            </div>
+          </div>
+        )}
+
+        {/* Shimmer effect on popular card */}
+        {plan.popular && (
+          <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+            <div className="absolute top-0 left-0 w-1/3 h-full bg-gradient-to-r from-transparent via-white/[0.03] to-transparent animate-shimmer" />
+          </div>
+        )}
+
+        <div className="mb-6">
+          <h3 className={`text-xl font-bold mb-1 ${plan.popular ? 'text-white' : 'text-sardoba-dark'}`}>
+            {plan.name}
+          </h3>
+          <p className={`text-sm ${plan.popular ? 'text-white/50' : 'text-sardoba-dark/40'}`}>
+            {plan.desc}
+          </p>
+        </div>
+
+        {/* Price */}
+        <div className="mb-6">
+          <div className="flex items-baseline gap-1">
+            <span className={`text-4xl font-bold transition-all duration-300 ${plan.popular ? 'text-sardoba-gold' : 'text-sardoba-dark'}`}>
+              {formatPrice(price)}
+            </span>
+            <span className={`text-sm ${plan.popular ? 'text-white/40' : 'text-sardoba-dark/40'}`}>
+              сум/мес
+            </span>
+          </div>
+          <p className={`text-xs mt-1 ${plan.popular ? 'text-white/30' : 'text-sardoba-dark/30'}`}>
+            {plan.rooms}
+          </p>
+        </div>
+
+        {/* Features */}
+        <ul className="space-y-3 mb-8">
+          {plan.features.map((feature) => (
+            <li key={feature} className="flex items-start gap-2">
+              <CheckIcon
+                size={18}
+                className={`mt-0.5 shrink-0 ${plan.popular ? 'text-sardoba-gold' : 'text-emerald-500'}`}
+              />
+              <span className={`text-sm ${plan.popular ? 'text-white/70' : 'text-sardoba-dark/60'}`}>
+                {feature}
+              </span>
+            </li>
+          ))}
+        </ul>
+
+        {/* CTA */}
+        <a
+          href="#contact"
+          className={`group/cta flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-semibold text-sm transition-all duration-300 cursor-pointer ${
+            plan.popular
+              ? 'bg-sardoba-gold text-sardoba-dark hover:bg-sardoba-gold-light hover:shadow-glow-gold hover:-translate-y-0.5'
+              : 'border-2 border-sardoba-dark/10 text-sardoba-dark hover:border-sardoba-gold hover:text-sardoba-gold hover:-translate-y-0.5'
+          }`}
+        >
+          {plan.cta}
+          <ArrowRightIcon size={16} className="transition-transform duration-300 group-hover/cta:translate-x-1" />
+        </a>
+      </div>
     </div>
   );
 }

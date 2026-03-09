@@ -1,13 +1,21 @@
 {
   "moduleFileExtensions": ["js", "json", "ts", "tsx"],
   "rootDir": "src",
-  "testRegex": ".*\.spec\.(ts|tsx)$",
+  "testRegex": ".*\\.spec\\.(ts|tsx)$",
   "transform": {
-    "^.+\.(t|j)sx?$": "ts-jest"
+    "^.+\\.(t|j)sx?$": [
+      "ts-jest",
+      {
+        "tsconfig": "<rootDir>/../tsconfig.json",
+        "jsx": "react-jsx"
+      }
+    ]
   },
   "testEnvironment": "jsdom",
+  "setupFilesAfterSetup": ["<rootDir>/test-setup.ts"],
   "moduleNameMapper": {
     "^@/(.*)$": "<rootDir>/$1",
-    "^@sardoba/shared$": "<rootDir>/../../packages/shared/src"
+    "^@sardoba/shared$": "<rootDir>/../../packages/shared/src",
+    "^@sardoba/shared/(.*)$": "<rootDir>/../../packages/shared/src/$1"
   }
 }

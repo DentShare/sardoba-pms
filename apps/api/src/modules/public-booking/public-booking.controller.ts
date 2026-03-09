@@ -5,9 +5,11 @@ import {
   Param,
   Query,
   Body,
+  Req,
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { Request } from 'express';
 import {
   ApiTags,
   ApiOperation,
@@ -20,6 +22,7 @@ import { PublicBookingService } from './public-booking.service';
 import { PublicBookingDto } from './dto/public-booking.dto';
 import { CheckAvailabilityDto } from './dto/check-availability.dto';
 import { CalculatePriceDto } from './dto/calculate-price.dto';
+import { TrackWidgetEventDto } from './dto/track-event.dto';
 
 /**
  * Public booking endpoints - NO authentication required.
@@ -27,7 +30,7 @@ import { CalculatePriceDto } from './dto/calculate-price.dto';
  *
  * Base path: /v1/book/:slug
  */
-@Controller('v1/book')
+@Controller('book')
 @ApiTags('Public Booking')
 @Public()
 export class PublicBookingController {
@@ -155,5 +158,42 @@ export class PublicBookingController {
     @Param('bookingNumber') bookingNumber: string,
   ) {
     return this.publicBookingService.getConfirmation(slug, bookingNumber);
+  }
+
+  // ── GET /v1/book/:slug/payment-info/:bookingNumber ──────────────────────
+
+  @Get(':slug/payment-info/:bookingNumber')
+  @ApiOperation({
+    summary: 'Get payment methods and URLs for a booking',
+    description:
+      'Returns available online payment methods (Payme, Click) with redirect URLs. ' +
+      'No authentication required.',
+  })
+  @ApiParam({ name: 'slug', type: String, description: 'Hotel URL slug' })
+  @ApiParam({ name: 'bookingNumber', type: String, description: 'Booking number' })
+  @ApiResponse({ status: 200, description: 'Payment methods and URLs' })
+  @ApiResponse({ status: 404, description: 'Booking not found' })
+  async getPaymentInfo(
+    @Param('slug') slug: string,
+    @Param('bookingNumber') bookingNumber: string,
+  ) {
+    return this.publicBookingService.getPaymentInfo(slug, bookingNumber);
+  }
+
+  // ── POST /v1/book/:slug/events ──────────────────────────────────────────
+
+  @Post(':slug/events')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    summary: 'Track widget/mini-site event',
+    description: 'Records analytics events from the booking widget or mini-site. No auth required.',
+  })
+  @ApiParam({ name: 'slug', type: String })
+  async trackEvent(
+    @Param('slug') slug: string,
+    @Body() dto: TrackWidgetEventDto,
+    @Req() req: Request,
+  ) {
+    await this.publicBookingService.trackWidgetEvent(slug, dto.event_type, dto.meta ?? {}, req);
   }
 }

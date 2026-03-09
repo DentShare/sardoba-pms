@@ -42,7 +42,7 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1')
+@Controller()
 @ApiBearerAuth()
 @ApiTags('Rates')
 @UseGuards(JwtAuthGuard, PropertyGuard)

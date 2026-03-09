@@ -307,7 +307,7 @@ describe('BookingsService', () => {
 
       expect(result).toBeDefined();
       expect(availabilityService.checkAvailability).toHaveBeenCalledWith(5, '2025-07-01', '2025-07-05');
-      expect(ratesService.calculate).toHaveBeenCalledWith(5, '2025-07-01', '2025-07-05', undefined);
+      expect(ratesService.calculate).toHaveBeenCalledWith(42, 5, '2025-07-01', '2025-07-05', undefined);
       expect(bookingNumberService.generateInTransaction).toHaveBeenCalled();
       expect(dataSource.transaction).toHaveBeenCalled();
     });
@@ -479,8 +479,8 @@ describe('BookingsService', () => {
       await service.create(42, 1, dtoWithGuest);
 
       expect(guestsService.findOrCreate).toHaveBeenCalledWith(42, {
-        firstName: 'Aziz',
-        lastName: 'Karimov',
+        first_name: 'Aziz',
+        last_name: 'Karimov',
         phone: '+998901234567',
         email: undefined,
         nationality: undefined,

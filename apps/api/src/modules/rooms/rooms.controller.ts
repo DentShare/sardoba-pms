@@ -11,15 +11,22 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UseGuards,
+  UseInterceptors,
+  UploadedFile,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import {
   ApiTags,
   ApiOperation,
   ApiResponse,
   ApiBearerAuth,
   ApiParam,
+  ApiConsumes,
 } from '@nestjs/swagger';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
+import { UploadService } from '@/modules/uploads/upload.service';
 import { RoomsService } from './rooms.service';
 import { CreateRoomDto } from './dto/create-room.dto';
 import { UpdateRoomDto } from './dto/update-room.dto';
@@ -38,11 +45,15 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1')
+@Controller()
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @ApiTags('Rooms')
 export class RoomsController {
-  constructor(private readonly roomsService: RoomsService) {}
+  constructor(
+    private readonly roomsService: RoomsService,
+    private readonly uploadService: UploadService,
+  ) {}
 
   // ── GET /v1/properties/:propertyId/rooms ──────────────────────────────────
 
@@ -114,6 +125,28 @@ export class RoomsController {
   ) {
     await this.roomsService.verifyRoomProperty(id, req.user.propertyId);
     return this.roomsService.update(id, dto);
+  }
+
+  // ── POST /v1/rooms/:id/photos ─────────────────────────────────────────────
+
+  @Post('rooms/:id/photos')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiOperation({ summary: 'Upload a photo for a room' })
+  @ApiConsumes('multipart/form-data')
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Photo uploaded, returns URL' })
+  @ApiResponse({ status: 400, description: 'VALIDATION_ERROR - invalid file' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  async uploadPhoto(
+    @Param('id', ParseIntPipe) id: number,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    await this.roomsService.verifyRoomProperty(id, req.user.propertyId);
+    const url = this.uploadService.saveImage(file);
+    await this.roomsService.addPhoto(id, url);
+    return { url };
   }
 
   // ── DELETE /v1/rooms/:id ──────────────────────────────────────────────────

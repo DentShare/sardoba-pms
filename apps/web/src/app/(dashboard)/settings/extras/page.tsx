@@ -10,6 +10,8 @@ import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/layout/PageHeader';
 
+const PROPERTY_ID = 1;
+
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
 interface Extra {
@@ -139,7 +141,7 @@ export default function ExtrasSettingsPage() {
   /* ── Load extras ───────────────────────────────────────────────────────── */
   const loadExtras = useCallback(async () => {
     try {
-      const { data } = await api.get('/extras');
+      const { data } = await api.get(`/properties/${PROPERTY_ID}/extras`);
       setExtras(Array.isArray(data) ? data : data.data || []);
     } catch {
       // silently fail
@@ -201,9 +203,9 @@ export default function ExtrasSettingsPage() {
 
     try {
       if (editId) {
-        await api.patch(`/extras/${editId}`, payload);
+        await api.put(`/properties/${PROPERTY_ID}/extras/${editId}`, payload);
       } else {
-        await api.post('/extras', payload);
+        await api.post(`/properties/${PROPERTY_ID}/extras`, payload);
       }
       setModalOpen(false);
       loadExtras();
@@ -217,7 +219,7 @@ export default function ExtrasSettingsPage() {
   /* ── Delete ────────────────────────────────────────────────────────────── */
   async function handleDelete(id: number) {
     try {
-      await api.delete(`/extras/${id}`);
+      await api.delete(`/properties/${PROPERTY_ID}/extras/${id}`);
       setDeleteConfirm(null);
       loadExtras();
     } catch {
@@ -228,7 +230,7 @@ export default function ExtrasSettingsPage() {
   /* ── Toggle active ─────────────────────────────────────────────────────── */
   async function toggleActive(extra: Extra) {
     try {
-      await api.patch(`/extras/${extra.id}`, { is_active: !extra.is_active });
+      await api.put(`/properties/${PROPERTY_ID}/extras/${extra.id}`, { is_active: !extra.is_active });
       loadExtras();
     } catch {
       // silently fail
@@ -256,7 +258,8 @@ export default function ExtrasSettingsPage() {
     // Persist new order
     const sortOrders = extras.map((ex, idx) => ({ id: ex.id, sort_order: idx }));
     try {
-      await api.patch('/extras/reorder', { items: sortOrders });
+      // Reorder endpoint not yet implemented — silently skip
+      // await api.patch(`/properties/${PROPERTY_ID}/extras/reorder`, { items: sortOrders });
     } catch {
       // Reload to revert on failure
       loadExtras();

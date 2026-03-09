@@ -239,6 +239,175 @@ export function testMessageTemplate(propertyName: string): string {
   ].join('\n');
 }
 
+// ── Housekeeping labels ─────────────────────────────────────────────────────
+
+const TASK_TYPE_LABELS: Record<string, string> = {
+  standard: 'Стандартная уборка',
+  checkout: 'Checkout уборка',
+  deep: 'Генеральная уборка',
+};
+
+const PRIORITY_LABELS: Record<string, string> = {
+  low: 'Низкий',
+  normal: 'Средний',
+  high: 'Высокий',
+  urgent: 'Срочный',
+};
+
+const ROOM_STATUS_LABELS: Record<string, string> = {
+  clean: 'Чисто',
+  dirty: 'Грязно',
+  cleaning: 'Уборка',
+  inspection: 'Проверка',
+  do_not_disturb: 'Не беспокоить',
+  out_of_order: 'Не в работе',
+};
+
+// ── Housekeeping templates ─────────────────────────────────────────────────
+
+/**
+ * New housekeeping task created notification template.
+ */
+export function housekeepingTaskCreatedTemplate(data: {
+  roomName: string;
+  roomType: string;
+  taskType: 'standard' | 'checkout' | 'deep';
+  priority: 'low' | 'normal' | 'high' | 'urgent';
+  assignedTo?: string;
+  notes?: string;
+}): string {
+  const taskTypeLabel = TASK_TYPE_LABELS[data.taskType] ?? data.taskType;
+  const priorityLabel = PRIORITY_LABELS[data.priority] ?? data.priority;
+
+  return [
+    `<b>🧹 Новая задача уборки</b>`,
+    ``,
+    `<b>Номер:</b> ${escapeHtml(data.roomName)} (${escapeHtml(data.roomType)})`,
+    `<b>Тип:</b> ${taskTypeLabel}`,
+    `<b>Приоритет:</b> ${priorityLabel}`,
+    data.assignedTo ? `<b>Назначена:</b> ${escapeHtml(data.assignedTo)}` : null,
+    data.notes ? `<b>Примечание:</b> ${escapeHtml(data.notes)}` : null,
+    ``,
+    `<i>Ожидает выполнения.</i>`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Housekeeping task assigned to maid notification template.
+ */
+export function housekeepingTaskAssignedTemplate(data: {
+  roomName: string;
+  taskType: string;
+  maidName: string;
+  priority: string;
+  notes?: string;
+}): string {
+  const taskTypeLabel = TASK_TYPE_LABELS[data.taskType] ?? data.taskType;
+  const priorityLabel = PRIORITY_LABELS[data.priority] ?? data.priority;
+
+  return [
+    `<b>👤 Задача назначена</b>`,
+    ``,
+    `<b>Номер:</b> ${escapeHtml(data.roomName)}`,
+    `<b>Тип:</b> ${taskTypeLabel}`,
+    `<b>Горничная:</b> ${escapeHtml(data.maidName)}`,
+    `<b>Приоритет:</b> ${priorityLabel}`,
+    data.notes ? `<b>Примечание:</b> ${escapeHtml(data.notes)}` : null,
+    ``,
+    `<i>Пожалуйста, приступите к уборке.</i>`,
+  ]
+    .filter(Boolean)
+    .join('\n');
+}
+
+/**
+ * Housekeeping task completed notification template.
+ */
+export function housekeepingTaskCompletedTemplate(data: {
+  roomName: string;
+  taskType: string;
+  maidName: string;
+  durationMinutes: number;
+}): string {
+  const taskTypeLabel = TASK_TYPE_LABELS[data.taskType] ?? data.taskType;
+
+  return [
+    `<b>✅ Уборка завершена</b>`,
+    ``,
+    `<b>Номер:</b> ${escapeHtml(data.roomName)}`,
+    `<b>Тип:</b> ${taskTypeLabel}`,
+    `<b>Горничная:</b> ${escapeHtml(data.maidName)}`,
+    `<b>Время:</b> ${data.durationMinutes} мин`,
+    ``,
+    `<i>Номер готов к проверке.</i>`,
+  ].join('\n');
+}
+
+/**
+ * Room status changed notification template.
+ */
+export function housekeepingRoomStatusChangedTemplate(data: {
+  roomName: string;
+  oldStatus: string;
+  newStatus: string;
+  changedBy: string;
+}): string {
+  const oldLabel = ROOM_STATUS_LABELS[data.oldStatus] ?? data.oldStatus;
+  const newLabel = ROOM_STATUS_LABELS[data.newStatus] ?? data.newStatus;
+
+  return [
+    `<b>🚪 Статус номера изменён</b>`,
+    ``,
+    `<b>Номер:</b> ${escapeHtml(data.roomName)}`,
+    `<b>Было:</b> ${oldLabel}`,
+    `<b>Стало:</b> ${newLabel}`,
+    `<b>Кем:</b> ${escapeHtml(data.changedBy)}`,
+  ].join('\n');
+}
+
+/**
+ * Daily housekeeping report notification template.
+ */
+export function housekeepingDailyReportTemplate(data: {
+  propertyName: string;
+  date: string;
+  totalRooms: number;
+  cleanRooms: number;
+  dirtyRooms: number;
+  cleaningRooms: number;
+  tasksTotal: number;
+  tasksCompleted: number;
+  topMaids: Array<{ name: string; completed: number }>;
+}): string {
+  const dateStr = formatDateRu(data.date);
+  const percent =
+    data.tasksTotal > 0
+      ? Math.round((data.tasksCompleted / data.tasksTotal) * 100)
+      : 0;
+
+  const lines: string[] = [
+    `<b>📊 Отчёт Housekeeping — ${dateStr}</b>`,
+    `<b>${escapeHtml(data.propertyName)}</b>`,
+    ``,
+    `<b>Номера:</b> ${data.totalRooms}`,
+    `  ✅ Чистые: ${data.cleanRooms}`,
+    `  ❌ Грязные: ${data.dirtyRooms}`,
+    `  🧹 На уборке: ${data.cleaningRooms}`,
+    ``,
+    `<b>Задачи:</b> ${data.tasksCompleted}/${data.tasksTotal} выполнено (${percent}%)`,
+    ``,
+    `<b>Топ горничных:</b>`,
+  ];
+
+  data.topMaids.forEach((maid, idx) => {
+    lines.push(`  ${idx + 1}. ${escapeHtml(maid.name)} — ${maid.completed} задач`);
+  });
+
+  return lines.join('\n');
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 /**

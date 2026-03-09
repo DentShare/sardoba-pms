@@ -15,3 +15,4 @@ export {
   getStatusLabel,
   getSourceLabel,
 } from './booking-colors';
+export { normalizePhone, formatPhone } from './phone';

@@ -3,13 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { addDays, format } from 'date-fns';
 import toast from 'react-hot-toast';
-import { cn } from '@/lib/cn';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
-import { GuestSearch } from './GuestSearch';
-import { useCreateBooking } from '@/lib/hooks/use-bookings';
+import { GuestSearch, type NewGuestData } from './GuestSearch';
+import { useCreateBooking, useConfirmBooking, useCheckinBooking } from '@/lib/hooks/use-bookings';
 import { useRooms } from '@/lib/hooks/use-rooms';
 import { calculateRate } from '@/lib/api/rates';
 import { formatMoney } from '@/lib/utils/money';
@@ -32,6 +31,8 @@ interface BookingFormProps {
   /** Pre-fill room and date from calendar */
   defaultRoomId?: number;
   defaultCheckIn?: string;
+  /** Walk-in mode: source='direct', auto confirm+checkin after creation */
+  walkIn?: boolean;
 }
 
 export function BookingForm({
@@ -40,11 +41,13 @@ export function BookingForm({
   propertyId,
   defaultRoomId,
   defaultCheckIn,
+  walkIn,
 }: BookingFormProps) {
   const today = format(new Date(), 'yyyy-MM-dd');
   const tomorrow = format(addDays(new Date(), 1), 'yyyy-MM-dd');
 
   const [guestId, setGuestId] = useState<number | null>(null);
+  const [newGuest, setNewGuest] = useState<NewGuestData | null>(null);
   const [guestLabel, setGuestLabel] = useState('');
   const [roomId, setRoomId] = useState(defaultRoomId?.toString() || '');
   const [checkIn, setCheckIn] = useState(defaultCheckIn || today);
@@ -59,8 +62,10 @@ export function BookingForm({
   const [notes, setNotes] = useState('');
   const [rateCalc, setRateCalc] = useState<RateCalculation | null>(null);
 
-  const { data: rooms } = useRooms(propertyId);
+  const { data: rooms } = useRooms(propertyId || null);
   const createBooking = useCreateBooking();
+  const confirmMut = useConfirmBooking();
+  const checkinMut = useCheckinBooking();
 
   const nights = getNights(checkIn, checkOut);
 
@@ -72,7 +77,7 @@ export function BookingForm({
     }
 
     let cancelled = false;
-    calculateRate(Number(roomId), checkIn, checkOut)
+    calculateRate(propertyId, Number(roomId), checkIn, checkOut)
       .then((calc) => {
         if (!cancelled) setRateCalc(calc);
       })
@@ -83,7 +88,7 @@ export function BookingForm({
     return () => {
       cancelled = true;
     };
-  }, [roomId, checkIn, checkOut, nights]);
+  }, [propertyId, roomId, checkIn, checkOut, nights]);
 
   const roomOptions = (rooms || []).map((r) => ({
     value: r.id.toString(),
@@ -91,8 +96,8 @@ export function BookingForm({
   }));
 
   const handleSubmit = useCallback(async () => {
-    if (!guestId) {
-      toast.error('Выберите гостя');
+    if (!guestId && !newGuest) {
+      toast.error('Выберите или создайте гостя');
       return;
     }
     if (!roomId) {
@@ -105,32 +110,44 @@ export function BookingForm({
     }
 
     try {
-      await createBooking.mutateAsync({
+      const booking = await createBooking.mutateAsync({
         property_id: propertyId,
         room_id: Number(roomId),
-        guest_id: guestId,
+        ...(guestId
+          ? { guest_id: guestId }
+          : { guest: newGuest! }),
         check_in: checkIn,
         check_out: checkOut,
         adults,
         children: children > 0 ? children : undefined,
-        source,
-        total_amount: rateCalc?.total || 0,
+        source: walkIn ? 'direct' : source,
         notes: notes || undefined,
       });
+
+      if (walkIn && booking) {
+        try {
+          await confirmMut.mutateAsync(booking.id);
+          await checkinMut.mutateAsync(booking.id);
+          toast.success('Гость заселён');
+        } catch {
+          toast.error('Бронирование создано, но автозаселение не удалось. Заселите вручную.');
+        }
+      }
+
       onClose();
     } catch {
       // Error handled by mutation
     }
   }, [
-    guestId, roomId, checkIn, checkOut, adults, children, source, notes,
-    propertyId, rateCalc, createBooking, onClose, nights,
+    guestId, newGuest, roomId, checkIn, checkOut, adults, children, source, notes,
+    propertyId, createBooking, onClose, nights,
   ]);
 
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title="Новое бронирование"
+      title={walkIn ? 'Walk-in заселение' : 'Новое бронирование'}
       size="lg"
       footer={
         <>
@@ -139,9 +156,9 @@ export function BookingForm({
           </Button>
           <Button
             onClick={handleSubmit}
-            loading={createBooking.isPending}
+            loading={createBooking.isPending || confirmMut.isPending || checkinMut.isPending}
           >
-            Создать бронирование
+            {walkIn ? 'Создать и заселить' : 'Создать бронирование'}
           </Button>
         </>
       }
@@ -151,7 +168,13 @@ export function BookingForm({
           value={guestLabel}
           onSelect={(id, name) => {
             setGuestId(id);
+            setNewGuest(null);
             setGuestLabel(name);
+          }}
+          onNewGuest={(guest) => {
+            setNewGuest(guest);
+            setGuestId(null);
+            setGuestLabel(`${guest.first_name} ${guest.last_name}`);
           }}
           propertyId={propertyId}
         />
@@ -209,12 +232,14 @@ export function BookingForm({
           />
         </div>
 
-        <Select
-          label="Источник"
-          value={source}
-          onChange={(e) => setSource(e.target.value)}
-          options={SOURCE_OPTIONS}
-        />
+        {!walkIn && (
+          <Select
+            label="Источник"
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            options={SOURCE_OPTIONS}
+          />
+        )}
 
         <Input
           label="Примечание"

@@ -8,6 +8,7 @@ export const envValidationSchema = Joi.object({
   PORT: Joi.number().default(3001),
   APP_URL: Joi.string().uri().default('http://localhost:3001'),
   FRONTEND_URL: Joi.string().uri().default('http://localhost:3001'),
+  ADMIN_URL: Joi.string().uri().default('http://localhost:3005'),
 
   // Database (AGENT-02)
   DATABASE_URL: Joi.string().when('NODE_ENV', {

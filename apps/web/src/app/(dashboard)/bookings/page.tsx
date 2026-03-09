@@ -15,8 +15,7 @@ import { useBookings } from '@/lib/hooks/use-bookings';
 import { formatMoney } from '@/lib/utils/money';
 import { formatDate } from '@/lib/utils/dates';
 import type { Booking, BookingStatus } from '@sardoba/shared';
-
-const PROPERTY_ID = 1;
+import { usePropertyId } from '@/lib/hooks/use-property-id';
 
 const STATUS_TABS: { value: BookingStatus | 'all'; label: string }[] = [
   { value: 'all', label: 'Все' },
@@ -38,6 +37,7 @@ const SOURCE_OPTIONS = [
 ];
 
 export default function BookingsPage() {
+  const propertyId = usePropertyId();
   const router = useRouter();
   const [showForm, setShowForm] = useState(false);
   const [activeTab, setActiveTab] = useState<BookingStatus | 'all'>('all');
@@ -49,7 +49,7 @@ export default function BookingsPage() {
 
   const filters = useMemo(
     () => ({
-      propertyId: PROPERTY_ID,
+      propertyId: propertyId ?? undefined,
       status: activeTab === 'all' ? undefined : activeTab,
       source: source || undefined,
       search: search || undefined,
@@ -58,7 +58,7 @@ export default function BookingsPage() {
       page,
       perPage: 20,
     }),
-    [activeTab, source, search, dateFrom, dateTo, page],
+    [propertyId, activeTab, source, search, dateFrom, dateTo, page],
   );
 
   const { data, isLoading } = useBookings(filters);
@@ -88,14 +88,14 @@ export default function BookingsPage() {
         key: 'guest',
         header: 'Гость',
         render: (b) => (
-          <span className="font-medium text-gray-900">Гость #{b.guestId}</span>
+          <span className="font-medium text-gray-900">{(b as any).guestName || `Гость #${b.guestId}`}</span>
         ),
       },
       {
         key: 'room',
         header: 'Комната',
         render: (b) => (
-          <span className="text-gray-600">#{b.roomId}</span>
+          <span className="text-gray-600">{(b as any).roomName || `#${b.roomId}`}</span>
         ),
         hideOnMobile: true,
       },
@@ -247,7 +247,7 @@ export default function BookingsPage() {
       <BookingForm
         open={showForm}
         onClose={() => setShowForm(false)}
-        propertyId={PROPERTY_ID}
+        propertyId={propertyId ?? 0}
       />
     </div>
   );

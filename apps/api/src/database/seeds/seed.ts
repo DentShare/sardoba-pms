@@ -90,7 +90,17 @@ async function seed(): Promise<void> {
       role: 'viewer' as const,
       isActive: true,
     });
-    console.log(`  Users created: owner(id=${owner.id}), viewer(id=${viewer.id})`);
+
+    // Super admin (platform-level, no property)
+    const superAdmin = await userRepo.save({
+      propertyId: null,
+      name: 'Super Admin',
+      email: 'superadmin@sardoba.uz',
+      passwordHash: await hashPassword('SuperAdmin123!'),
+      role: 'super_admin' as const,
+      isActive: true,
+    });
+    console.log(`  Users created: owner(id=${owner.id}), viewer(id=${viewer.id}), super_admin(id=${superAdmin.id})`);
 
     // ── 3. Rooms (5 rooms) ──────────────────────────────────────────────────
     const roomRepo = dataSource.getRepository(Room);
@@ -197,8 +207,8 @@ async function seed(): Promise<void> {
         propertyId: property.id,
         name: 'Standard Rate',
         type: 'base' as const,
-        price: 0,
-        discountPercent: null,
+        price: null,
+        discountPercent: 0,
         dateFrom: null,
         dateTo: null,
         minStay: 1,

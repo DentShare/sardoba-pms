@@ -18,6 +18,8 @@ RUN npm run build --workspace=@sardoba/shared
 FROM build-shared AS build
 COPY apps/web ./apps/web
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN npm run build --workspace=@sardoba/web
 
 # Production image

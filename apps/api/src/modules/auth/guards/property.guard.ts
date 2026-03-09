@@ -26,6 +26,11 @@ export class PropertyGuard implements CanActivate {
       request.params?.property_id ?? request.body?.property_id,
     );
 
+    // Super admin bypasses property checks
+    if (user.role === 'super_admin') {
+      return true;
+    }
+
     // No property_id in request => skip check
     if (!propertyId || isNaN(propertyId)) {
       return true;

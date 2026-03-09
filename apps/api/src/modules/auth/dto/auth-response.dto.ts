@@ -7,11 +7,11 @@ export class AuthUserDto {
   @ApiProperty({ example: 'Alisher Karimov' })
   name!: string;
 
-  @ApiProperty({ example: 'admin', enum: ['owner', 'admin', 'viewer'] })
+  @ApiProperty({ example: 'admin', enum: ['owner', 'admin', 'viewer', 'super_admin'] })
   role!: string;
 
-  @ApiProperty({ example: 1 })
-  property_id!: number;
+  @ApiProperty({ example: 1, nullable: true })
+  property_id!: number | null;
 }
 
 export class AuthResponseDto {
@@ -55,11 +55,11 @@ export class MeResponseDto {
   @ApiProperty({ example: 'admin@sardoba.uz' })
   email!: string;
 
-  @ApiProperty({ example: 'admin', enum: ['owner', 'admin', 'viewer'] })
+  @ApiProperty({ example: 'admin', enum: ['owner', 'admin', 'viewer', 'super_admin'] })
   role!: string;
 
-  @ApiProperty({ example: 1 })
-  property_id!: number;
+  @ApiProperty({ example: 1, nullable: true })
+  property_id!: number | null;
 
   @ApiProperty({ example: true })
   is_active!: boolean;

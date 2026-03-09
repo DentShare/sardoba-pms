@@ -14,11 +14,12 @@ import { StatusBadge, SourceBadge, Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import {
   useBooking,
+  useConfirmBooking,
   useCheckinBooking,
   useCheckoutBooking,
   useCancelBooking,
 } from '@/lib/hooks/use-bookings';
-import { listPayments, createPayment } from '@/lib/api/payments';
+import { listPayments, createPayment, type PaymentsResponse } from '@/lib/api/payments';
 import { formatMoney } from '@/lib/utils/money';
 import { formatDate, formatDateTime, getNights } from '@/lib/utils/dates';
 import type { Payment, BookingStatus, PaymentMethod } from '@sardoba/shared';
@@ -27,8 +28,6 @@ const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: 'cash', label: 'Наличные' },
   { value: 'card', label: 'Карта' },
   { value: 'transfer', label: 'Перевод' },
-  { value: 'payme', label: 'Payme' },
-  { value: 'click', label: 'Click' },
   { value: 'other', label: 'Другое' },
 ];
 
@@ -39,12 +38,14 @@ export default function BookingDetailPage() {
   const id = Number(params.id);
 
   const { data: booking, isLoading } = useBooking(id);
-  const { data: payments } = useQuery({
+  const { data: paymentsResponse } = useQuery({
     queryKey: ['payments', id],
     queryFn: () => listPayments(id),
     enabled: !!id,
   });
+  const payments = paymentsResponse?.data;
 
+  const confirmMut = useConfirmBooking();
   const checkinMut = useCheckinBooking();
   const checkoutMut = useCheckoutBooking();
   const cancelMut = useCancelBooking();
@@ -78,9 +79,8 @@ export default function BookingDetailPage() {
 
   const handleConfirm = useCallback(async () => {
     if (!booking) return;
-    // Use checkin for now since there's no separate confirm mutation
-    await checkinMut.mutateAsync(booking.id);
-  }, [booking, checkinMut]);
+    await confirmMut.mutateAsync(booking.id);
+  }, [booking, confirmMut]);
 
   const handleCheckin = useCallback(async () => {
     if (!booking) return;
@@ -123,7 +123,7 @@ export default function BookingDetailPage() {
 
     if (status === 'new') {
       buttons.push(
-        <Button key="confirm" variant="secondary" onClick={handleConfirm} loading={checkinMut.isPending}>
+        <Button key="confirm" variant="secondary" onClick={handleConfirm} loading={confirmMut.isPending}>
           Подтвердить
         </Button>,
       );
@@ -162,14 +162,14 @@ export default function BookingDetailPage() {
             {actionButtons()}
             <Button
               variant="outline"
-              onClick={() => window.print()}
+              onClick={() => router.push(`/bookings/${booking.id}/invoice`)}
               icon={
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
                 </svg>
               }
             >
-              Печать
+              Счёт
             </Button>
           </div>
         }

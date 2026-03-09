@@ -11,8 +11,8 @@ import { DataSource, DataSourceOptions } from 'typeorm';
 const options: DataSourceOptions = {
   type: 'postgres',
   url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/sardoba_dev',
-  entities: [__dirname + '/entities/*.entity{.ts,.js}'],
-  migrations: [__dirname + '/migrations/*{.ts,.js}'],
+  entities: [__dirname + '/entities/*.entity.ts'],
+  migrations: [__dirname + '/migrations/!(index).ts'],
   migrationsRun: false,
   synchronize: false,
   logging: process.env.NODE_ENV === 'development',

@@ -23,8 +23,7 @@ import {
 } from '@/lib/api/analytics';
 import { formatMoney, formatMoneyCompact } from '@/lib/utils/money';
 import { SOURCE_COLORS } from '@/lib/utils/booking-colors';
-
-const PROPERTY_ID = 1;
+import { usePropertyId } from '@/lib/hooks/use-property-id';
 
 type PeriodKey = '7d' | '30d' | '90d' | 'custom';
 
@@ -262,6 +261,7 @@ function KpiCard({
 // ---- Main Page ----
 
 export default function AnalyticsPage() {
+  const propertyId = usePropertyId();
   const [period, setPeriod] = useState<PeriodKey>('30d');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -295,7 +295,7 @@ export default function AnalyticsPage() {
   }, [period, customFrom, customTo]);
 
   const analyticsParams: AnalyticsParams = {
-    propertyId: PROPERTY_ID,
+    propertyId: propertyId ?? 0,
     dateFrom,
     dateTo,
     compareDateFrom,
@@ -305,37 +305,37 @@ export default function AnalyticsPage() {
   const { data: summary, isLoading: loadingSummary } = useQuery({
     queryKey: ['analytics', 'summary', analyticsParams],
     queryFn: () => getSummary(analyticsParams),
-    enabled: !!dateFrom && !!dateTo,
+    enabled: !!propertyId && !!dateFrom && !!dateTo,
   });
 
   const { data: occupancy } = useQuery({
     queryKey: ['analytics', 'occupancy', analyticsParams],
     queryFn: () => getOccupancy(analyticsParams),
-    enabled: !!dateFrom && !!dateTo,
+    enabled: !!propertyId && !!dateFrom && !!dateTo,
   });
 
   const { data: revenue } = useQuery({
     queryKey: ['analytics', 'revenue', analyticsParams],
     queryFn: () => getRevenue(analyticsParams),
-    enabled: !!dateFrom && !!dateTo,
+    enabled: !!propertyId && !!dateFrom && !!dateTo,
   });
 
   const { data: sources } = useQuery({
     queryKey: ['analytics', 'sources', analyticsParams],
     queryFn: () => getSources(analyticsParams),
-    enabled: !!dateFrom && !!dateTo,
+    enabled: !!propertyId && !!dateFrom && !!dateTo,
   });
 
   const { data: roomStats } = useQuery({
     queryKey: ['analytics', 'rooms', analyticsParams],
     queryFn: () => getRoomStats(analyticsParams),
-    enabled: !!dateFrom && !!dateTo,
+    enabled: !!propertyId && !!dateFrom && !!dateTo,
   });
 
   const handleExport = useCallback(async () => {
     try {
       const blob = await exportReport({
-        propertyId: PROPERTY_ID,
+        propertyId: propertyId ?? 0,
         dateFrom,
         dateTo,
         format: 'xlsx',

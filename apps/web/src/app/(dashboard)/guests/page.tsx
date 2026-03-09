@@ -15,11 +15,12 @@ import { Pagination } from '@/components/ui/Pagination';
 import { useGuests, useCreateGuest } from '@/lib/hooks/use-guests';
 import { exportOvir } from '@/lib/api/guests';
 import { formatMoney } from '@/lib/utils/money';
+import { normalizePhone } from '@/lib/utils/phone';
 import type { Guest } from '@sardoba/shared';
-
-const PROPERTY_ID = 1;
+import { usePropertyId } from '@/lib/hooks/use-property-id';
 
 export default function GuestsPage() {
+  const propertyId = usePropertyId();
   const router = useRouter();
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -39,7 +40,7 @@ export default function GuestsPage() {
 
   const filters = useMemo(
     () => ({
-      propertyId: PROPERTY_ID,
+      propertyId: propertyId ?? undefined,
       search: search || undefined,
       page,
       perPage: 20,
@@ -61,12 +62,16 @@ export default function GuestsPage() {
       toast.error('Заполните обязательные поля');
       return;
     }
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      toast.error('Введите корректный номер телефона (+998XXXXXXXXX)');
+      return;
+    }
     try {
       await createGuest.mutateAsync({
-        property_id: PROPERTY_ID,
         first_name: firstName,
         last_name: lastName,
-        phone,
+        phone: normalizedPhone,
         email: email || undefined,
         nationality: nationality || undefined,
       });
@@ -87,7 +92,7 @@ export default function GuestsPage() {
       return;
     }
     try {
-      const blob = await exportOvir(ovirFrom, ovirTo, PROPERTY_ID);
+      const blob = await exportOvir(ovirFrom, ovirTo, propertyId!);
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;

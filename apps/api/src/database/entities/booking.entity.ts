@@ -29,6 +29,7 @@ export type BookingStatus =
 
 export type BookingSource =
   | 'direct'
+  | 'direct_widget'
   | 'booking_com'
   | 'airbnb'
   | 'expedia'

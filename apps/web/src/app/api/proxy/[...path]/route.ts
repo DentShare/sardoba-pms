@@ -19,21 +19,31 @@ async function proxyRequest(
   const targetUrl = `${API_URL}/${targetPath}${queryString}`;
 
   const accessToken = request.cookies.get('access_token')?.value;
+  const contentType = request.headers.get('content-type') || 'application/json';
+  const isMultipart = contentType.includes('multipart/form-data');
 
-  // Build headers, forwarding relevant ones from the original request
-  const headers: Record<string, string> = {
-    'Content-Type': request.headers.get('content-type') || 'application/json',
-  };
+  // Build headers, forwarding the original Content-Type (including boundary for multipart)
+  const headers: Record<string, string> = {};
+
+  if (!isMultipart) {
+    headers['Content-Type'] = contentType;
+  }
+  // For multipart, let fetch set the Content-Type with the correct boundary
 
   if (accessToken) {
     headers['Authorization'] = `Bearer ${accessToken}`;
   }
 
   // Forward the request body for methods that support it
-  let body: string | null = null;
+  let body: BodyInit | null = null;
   if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(request.method)) {
     try {
-      body = await request.text();
+      if (isMultipart) {
+        // Forward FormData as-is so fetch can set the proper boundary
+        body = await request.formData();
+      } else {
+        body = await request.text();
+      }
     } catch {
       // No body
     }

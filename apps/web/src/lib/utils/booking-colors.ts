@@ -78,6 +78,16 @@ export const SOURCE_COLORS: Record<BookingSource, SourceColor> = {
     text: 'text-green-700',
     label: 'Телефон',
   },
+  website: {
+    bg: 'bg-indigo-100',
+    text: 'text-indigo-700',
+    label: 'Сайт',
+  },
+  direct_widget: {
+    bg: 'bg-cyan-100',
+    text: 'text-cyan-700',
+    label: 'Виджет',
+  },
   other: {
     bg: 'bg-gray-100',
     text: 'text-gray-600',

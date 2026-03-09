@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,6 +20,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { BookingsService } from './bookings.service';
 import { CreateBookingDto } from './dto/create-booking.dto';
 import { UpdateBookingDto } from './dto/update-booking.dto';
@@ -37,7 +39,8 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1')
+@Controller()
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @ApiTags('Bookings')
 export class BookingsController {
@@ -58,6 +61,21 @@ export class BookingsController {
   ) {
     this.verifyPropertyAccess(req.user.propertyId, propertyId);
     return this.bookingsService.findAll(propertyId, query);
+  }
+
+  // ── GET /v1/properties/:propertyId/today ────────────────────────────────
+
+  @Get('properties/:propertyId/today')
+  @ApiOperation({ summary: 'Get today\'s dashboard summary (arrivals, departures, in-house)' })
+  @ApiParam({ name: 'propertyId', type: Number })
+  @ApiResponse({ status: 200, description: 'Today summary' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  async getTodaySummary(
+    @Param('propertyId', ParseIntPipe) propertyId: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    this.verifyPropertyAccess(req.user.propertyId, propertyId);
+    return this.bookingsService.getTodaySummary(propertyId);
   }
 
   // ── POST /v1/bookings ──────────────────────────────────────────────────
@@ -140,6 +158,23 @@ export class BookingsController {
       req.user.sub,
       dto,
     );
+  }
+
+  // ── POST /v1/bookings/:id/confirm ──────────────────────────────────────
+
+  @Post('bookings/:id/confirm')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Confirm a booking (new -> confirmed)' })
+  @ApiParam({ name: 'id', type: Number })
+  @ApiResponse({ status: 200, description: 'Booking confirmed' })
+  @ApiResponse({ status: 401, description: 'AUTH_REQUIRED' })
+  @ApiResponse({ status: 404, description: 'NOT_FOUND' })
+  @ApiResponse({ status: 422, description: 'BOOKING_CANCELLED (must be new)' })
+  async confirm(
+    @Param('id', ParseIntPipe) id: number,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.bookingsService.confirm(id, req.user.propertyId, req.user.sub);
   }
 
   // ── POST /v1/bookings/:id/check-in ─────────────────────────────────────

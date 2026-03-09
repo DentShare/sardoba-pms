@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Req,
+  UseGuards,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -19,6 +20,7 @@ import {
   ApiParam,
 } from '@nestjs/swagger';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
+import { JwtAuthGuard } from '@/modules/auth/guards/jwt-auth.guard';
 import { PropertyExtrasService } from './property-extras.service';
 import { CreateExtraDto } from './dto/create-extra.dto';
 import { UpdateExtraDto } from './dto/update-extra.dto';
@@ -34,7 +36,8 @@ interface AuthenticatedRequest {
   };
 }
 
-@Controller('v1/properties/:propertyId/extras')
+@Controller('properties/:propertyId/extras')
+@UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 @ApiTags('Property Extras')
 export class PropertyExtrasController {

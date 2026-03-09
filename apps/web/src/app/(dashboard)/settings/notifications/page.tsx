@@ -11,23 +11,20 @@ import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { api } from '@/lib/api';
 import type { NotificationSettings, TelegramRecipient } from '@sardoba/shared';
-
-const PROPERTY_ID = 1;
+import { usePropertyId } from '@/lib/hooks/use-property-id';
 
 async function getNotificationSettings(propertyId: number): Promise<NotificationSettings> {
-  const { data } = await api.get<NotificationSettings>('/notifications/settings', {
-    params: { property_id: propertyId },
-  });
+  const { data } = await api.get<NotificationSettings>(`/properties/${propertyId}/notification-settings`);
   return data;
 }
 
-async function updateNotificationSettings(settings: NotificationSettings): Promise<NotificationSettings> {
-  const { data } = await api.put<NotificationSettings>('/notifications/settings', settings);
+async function updateNotificationSettings(propertyId: number, settings: Record<string, unknown>): Promise<NotificationSettings> {
+  const { data } = await api.put<NotificationSettings>(`/properties/${propertyId}/notification-settings`, settings);
   return data;
 }
 
 async function testNotification(propertyId: number): Promise<void> {
-  await api.post('/notifications/test', { property_id: propertyId });
+  await api.post(`/properties/${propertyId}/notification-settings/test`);
 }
 
 function Toggle({
@@ -64,11 +61,13 @@ function Toggle({
 }
 
 export default function SettingsNotificationsPage() {
+  const propertyId = usePropertyId();
   const queryClient = useQueryClient();
 
   const { data: settings, isLoading } = useQuery({
-    queryKey: ['notification-settings', PROPERTY_ID],
-    queryFn: () => getNotificationSettings(PROPERTY_ID),
+    queryKey: ['notification-settings', propertyId],
+    queryFn: () => getNotificationSettings(propertyId!),
+    enabled: !!propertyId,
   });
 
   const [recipients, setRecipients] = useState<TelegramRecipient[]>([]);
@@ -86,16 +85,31 @@ export default function SettingsNotificationsPage() {
   useEffect(() => {
     if (settings) {
       setRecipients(settings.telegramRecipients || []);
-      setEvents(settings.events || events);
+      setEvents({
+        newBooking: settings.eventNewBooking ?? true,
+        cancellation: settings.eventCancellation ?? true,
+        dailyDigest: settings.eventDailyDigest ?? true,
+        dailyDigestTime: settings.dailyDigestTime ?? '09:00',
+        paymentReceived: settings.eventPayment ?? true,
+        syncError: settings.eventSyncError ?? true,
+      });
     }
   }, [settings]);
 
   const saveMut = useMutation({
     mutationFn: () =>
-      updateNotificationSettings({
-        propertyId: PROPERTY_ID,
-        telegramRecipients: recipients,
-        events,
+      updateNotificationSettings(propertyId!, {
+        telegram_recipients: recipients.map((r) => ({
+          name: r.name,
+          chat_id: r.chatId,
+          is_active: r.isActive,
+        })),
+        event_new_booking: events.newBooking,
+        event_cancellation: events.cancellation,
+        event_daily_digest: events.dailyDigest,
+        daily_digest_time: events.dailyDigestTime,
+        event_payment: events.paymentReceived,
+        event_sync_error: events.syncError,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notification-settings'] });
@@ -107,7 +121,7 @@ export default function SettingsNotificationsPage() {
   });
 
   const testMut = useMutation({
-    mutationFn: () => testNotification(PROPERTY_ID),
+    mutationFn: () => testNotification(propertyId!),
     onSuccess: () => {
       toast.success('Тестовое уведомление отправлено');
     },

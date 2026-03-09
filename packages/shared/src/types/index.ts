@@ -90,10 +90,12 @@ export type BookingStatus =
 
 export type BookingSource =
   | 'direct'
+  | 'direct_widget'
   | 'booking_com'
   | 'airbnb'
   | 'expedia'
   | 'phone'
+  | 'website'
   | 'other';
 
 export interface Booking {
@@ -117,6 +119,34 @@ export interface Booking {
   cancelledAt?: Date;
   cancelReason?: string;
   createdBy: number; // userId
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── BOOKING EXTRA ──────────────────────────────────────────────────────
+export interface BookingExtra {
+  id: number;
+  bookingId: number;
+  propertyExtraId: number;
+  name: string;
+  quantity: number;
+  unitPrice: number; // tiyin
+  totalPrice: number; // tiyin
+}
+
+// ─── PROPERTY EXTRA ─────────────────────────────────────────────────────
+export type PropertyExtraPriceType = 'per_booking' | 'per_night' | 'per_person';
+
+export interface PropertyExtra {
+  id: number;
+  propertyId: number;
+  name: string;
+  description?: string;
+  price: number; // tiyin
+  priceType: PropertyExtraPriceType;
+  icon?: string;
+  isActive: boolean;
+  sortOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -217,11 +247,11 @@ export interface SyncLog {
 }
 
 // ─── USER & AUTH ───────────────────────────────────────────────────────────
-export type UserRole = 'owner' | 'admin' | 'viewer';
+export type UserRole = 'owner' | 'admin' | 'viewer' | 'super_admin';
 
 export interface User {
   id: number;
-  propertyId: number;
+  propertyId: number | null;
   name: string;
   email: string;
   role: UserRole;
@@ -244,16 +274,16 @@ export interface TelegramRecipient {
 }
 
 export interface NotificationSettings {
+  id?: number;
   propertyId: number;
   telegramRecipients: TelegramRecipient[];
-  events: {
-    newBooking: boolean;
-    cancellation: boolean;
-    dailyDigest: boolean;
-    dailyDigestTime: string; // HH:MM
-    paymentReceived: boolean;
-    syncError: boolean;
-  };
+  eventNewBooking: boolean;
+  eventCancellation: boolean;
+  eventDailyDigest: boolean;
+  dailyDigestTime: string; // HH:MM
+  eventPayment: boolean;
+  eventSyncError: boolean;
+  updatedAt?: Date;
 }
 
 // ─── ANALYTICS ─────────────────────────────────────────────────────────────
@@ -266,6 +296,46 @@ export interface AnalyticsSummary {
   avgStayNights: number;
   topSource: BookingSource;
   compare?: Partial<AnalyticsSummary>;
+}
+
+// ─── FLOOR PLAN ───────────────────────────────────────────────────────────
+export type CompassDirection = 'N' | 'NE' | 'E' | 'SE' | 'S' | 'SW' | 'W' | 'NW';
+
+export type FloorCellType =
+  | 'empty'
+  | 'room'
+  | 'stairs'
+  | 'elevator'
+  | 'corridor'
+  | 'reception'
+  | 'wall'
+  | 'restroom'
+  | 'storage'
+  | 'other';
+
+export interface FloorPlanCell {
+  row: number;
+  col: number;
+  type: FloorCellType;
+  roomId?: number;
+  label?: string;
+  colSpan?: number;
+  rowSpan?: number;
+}
+
+export interface FloorPlan {
+  floor: number;
+  name: string;
+  rows: number;
+  cols: number;
+  compass: CompassDirection;
+  cells: FloorPlanCell[];
+  updatedAt: string;
+}
+
+export interface FloorPlansConfig {
+  version: 1;
+  floors: FloorPlan[];
 }
 
 // ─── API RESPONSE WRAPPERS ─────────────────────────────────────────────────
@@ -294,6 +364,7 @@ export interface CalendarRoom {
   type: RoomType;
   bookings: Array<{
     id: number;
+    bookingNumber: string;
     checkIn: string;
     checkOut: string;
     guestName: string;
@@ -312,4 +383,131 @@ export interface CalendarResponse {
   rooms: CalendarRoom[];
   dateFrom: string;
   dateTo: string;
+}
+
+// ─── PUBLIC BOOKING / MINI-SITE (Agent 15) ──────────────────────────────────
+
+export interface PublicHotelInfo {
+  id: string;
+  slug: string;
+  name: string;
+  description?: string;
+  address: string;
+  phone?: string;
+  whatsapp?: string;
+  mini_site_config: MiniSiteConfig;
+  rooms: PublicRoomInfo[];
+}
+
+export interface MiniSiteConfig {
+  hero_title?: string;
+  hero_subtitle?: string;
+  primary_color?: string;
+  theme_preset?: string;
+  show_prices?: boolean;
+  google_maps_link?: string;
+  phone?: string;
+  whatsapp?: string;
+  instagram?: string;
+  languages?: ('ru' | 'uz' | 'en')[];
+}
+
+export interface PublicRoomInfo {
+  id: number;
+  name: string;
+  type: RoomType;
+  capacity: number;
+  description?: string;
+  amenities: string[];
+  photos: string[];
+  base_price: number;
+}
+
+export interface PublicAvailabilityResult {
+  check_in: string;
+  check_out: string;
+  nights: number;
+  available_rooms: PublicAvailableRoom[];
+}
+
+export interface PublicAvailableRoom extends PublicRoomInfo {
+  price_per_night: number;
+  total_price: number;
+  rate_name: string;
+  breakfast_included: boolean;
+  available: boolean;
+}
+
+export interface CreatePublicBookingDto {
+  room_id: number;
+  check_in: string;
+  check_out: string;
+  adults: number;
+  children?: number;
+  guest: {
+    first_name: string;
+    last_name: string;
+    phone: string;
+    email?: string;
+    citizenship?: string;
+  };
+  special_requests?: string;
+  payment_method: 'on_arrival' | 'online';
+}
+
+// ─── DYNAMIC PRICING (Agent 16) ────────────────────────────────────────────
+
+export type DynamicPricingTriggerType =
+  | 'occupancy_high'
+  | 'occupancy_low'
+  | 'days_before'
+  | 'day_of_week';
+
+export type DynamicPricingActionType =
+  | 'increase_percent'
+  | 'decrease_percent'
+  | 'set_fixed';
+
+export interface DynamicPricingRule {
+  id: string;
+  property_id: number;
+  name: string;
+  is_active: boolean;
+  priority: number;
+  trigger_type: DynamicPricingTriggerType;
+  trigger_config: Record<string, number | number[]>;
+  action_type: DynamicPricingActionType;
+  action_value: number;
+  apply_to: 'all' | 'room_type' | 'room';
+  room_ids?: string[];
+  min_price?: number;
+  max_price?: number;
+}
+
+export interface PricingChangeLog {
+  id: string;
+  room_id: number;
+  room_name: string;
+  rule_id: string;
+  rule_name: string;
+  date: string;
+  old_price: number;
+  new_price: number;
+  change_percent: number;
+  trigger_value: number;
+  created_at: string;
+}
+
+// ─── PUSH NOTIFICATIONS (Agent 17) ──────────────────────────────────────────
+
+export interface WebPushPayload {
+  title: string;
+  body: string;
+  icon?: string;
+  badge?: string;
+  tag?: string;
+  data?: {
+    url?: string;
+    booking_id?: string;
+  };
 }

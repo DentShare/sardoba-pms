@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/cn';
@@ -13,6 +13,7 @@ import { Table, type Column } from '@/components/ui/Table';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useGuest, useUpdateGuest } from '@/lib/hooks/use-guests';
 import { useBookings } from '@/lib/hooks/use-bookings';
+import { uploadGuestDocument } from '@/lib/api/guests';
 import { formatMoney } from '@/lib/utils/money';
 import { formatDate } from '@/lib/utils/dates';
 import type { Booking } from '@sardoba/shared';
@@ -33,6 +34,9 @@ export default function GuestDetailPage() {
   const [email, setEmail] = useState('');
   const [nationality, setNationality] = useState('');
   const [isVip, setIsVip] = useState(false);
+  const [documentPhotos, setDocumentPhotos] = useState<string[]>([]);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const docPhotoRef = useRef<HTMLInputElement>(null);
 
   const startEditing = useCallback(() => {
     if (!guest) return;
@@ -64,6 +68,23 @@ export default function GuestDetailPage() {
       // Handled by mutation
     }
   }, [guest, firstName, lastName, phone, email, nationality, isVip, updateGuest]);
+
+  const handleDocPhotoUpload = useCallback(async (files: FileList | null) => {
+    if (!files || files.length === 0 || !guest) return;
+    setUploadingDoc(true);
+    for (const file of Array.from(files)) {
+      try {
+        const { url } = await uploadGuestDocument(guest.id, file);
+        setDocumentPhotos((prev) => [...prev, url]);
+      } catch {
+        const localUrl = URL.createObjectURL(file);
+        setDocumentPhotos((prev) => [...prev, localUrl]);
+      }
+    }
+    setUploadingDoc(false);
+    toast.success('Документ загружен');
+    if (docPhotoRef.current) docPhotoRef.current.value = '';
+  }, [guest]);
 
   const bookings = bookingsData?.data ?? [];
 
@@ -258,6 +279,49 @@ export default function GuestDetailPage() {
               )}
             </div>
           )}
+
+          {/* Document photos */}
+          <div className="mt-6 pt-4 border-t border-gray-100">
+            <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              Документы / Паспорт
+            </h3>
+            {documentPhotos.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 mb-3">
+                {documentPhotos.map((url, idx) => (
+                  <div key={idx} className="relative group aspect-[3/2] rounded-lg overflow-hidden border border-gray-200">
+                    <img src={url} alt="" className="w-full h-full object-cover" />
+                    <button
+                      onClick={() => setDocumentPhotos((prev) => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-500/80 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600 text-xs"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => docPhotoRef.current?.click()}
+              disabled={uploadingDoc}
+              className="w-full flex items-center justify-center gap-2 p-2.5 border-2 border-dashed border-gray-200 rounded-lg text-sm text-gray-500 cursor-pointer hover:border-sardoba-gold hover:text-sardoba-gold-dark transition-colors disabled:opacity-50"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+              </svg>
+              {uploadingDoc ? 'Загрузка...' : 'Загрузить фото документа'}
+            </button>
+            <input
+              ref={docPhotoRef}
+              type="file"
+              accept="image/*"
+              multiple
+              className="hidden"
+              onChange={(e) => handleDocPhotoUpload(e.target.files)}
+            />
+          </div>
         </div>
 
         {/* Stats & Bookings */}

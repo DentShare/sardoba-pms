@@ -30,10 +30,11 @@ export interface UpdateRateDto {
  * List all rates for a property.
  */
 export async function listRates(propertyId: number): Promise<Rate[]> {
-  const { data } = await api.get<Rate[]>('/rates', {
-    params: { property_id: propertyId },
-  });
-  return data;
+  const { data } = await api.get(
+    `/properties/${propertyId}/rates`,
+  );
+  // API returns paginated { data: [...], meta: {...} }
+  return data?.data ?? (Array.isArray(data) ? data : []);
 }
 
 /**
@@ -51,7 +52,7 @@ export async function updateRate(
   id: number,
   dto: UpdateRateDto,
 ): Promise<Rate> {
-  const { data } = await api.patch<Rate>(`/rates/${id}`, dto);
+  const { data } = await api.put<Rate>(`/rates/${id}`, dto);
   return data;
 }
 
@@ -66,16 +67,20 @@ export async function deleteRate(id: number): Promise<void> {
  * Calculate rate for a room and date range.
  */
 export async function calculateRate(
+  propertyId: number,
   roomId: number,
   checkIn: string,
   checkOut: string,
+  rateId?: number,
 ): Promise<RateCalculation> {
-  const { data } = await api.get<RateCalculation>('/rates/calculate', {
-    params: {
+  const { data } = await api.post<RateCalculation>(
+    `/properties/${propertyId}/rates/calculate`,
+    {
       room_id: roomId,
       check_in: checkIn,
       check_out: checkOut,
+      rate_id: rateId,
     },
-  });
+  );
   return data;
 }

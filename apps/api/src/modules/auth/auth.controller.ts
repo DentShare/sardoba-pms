@@ -19,6 +19,8 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import {
   AuthResponseDto,
   RefreshResponseDto,
@@ -32,7 +34,7 @@ import { JwtPayload } from './strategies/jwt.strategy';
 import { JwtRefreshPayload } from './strategies/jwt-refresh.strategy';
 
 @ApiTags('Auth')
-@Controller('v1/auth')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
@@ -61,16 +63,50 @@ export class AuthController {
   @Public()
   @Post('register')
   @HttpCode(HttpStatus.CREATED)
-  @ApiOperation({ summary: 'Register a new user' })
+  @ApiOperation({ summary: 'Register a new user and optionally create a property' })
   @ApiBody({ type: RegisterDto })
   @ApiResponse({
     status: 201,
     description: 'User registered successfully',
     type: AuthResponseDto,
   })
-  @ApiResponse({ status: 409, description: 'ALREADY_EXISTS — email already registered for this property' })
+  @ApiResponse({ status: 409, description: 'ALREADY_EXISTS — email already registered' })
   async register(@Body() dto: RegisterDto): Promise<AuthResponseDto> {
     return this.authService.register(dto);
+  }
+
+  // ─── POST /v1/auth/forgot-password ────────────────────────────────────────
+
+  @Public()
+  @Post('forgot-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 3, ttl: 60000 } }) // 3 attempts per minute
+  @ApiOperation({ summary: 'Request a password reset link' })
+  @ApiBody({ type: ForgotPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Reset link sent (always returns success to prevent email enumeration)',
+  })
+  @ApiResponse({ status: 429, description: 'Too many attempts' })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.forgotPassword(dto);
+  }
+
+  // ─── POST /v1/auth/reset-password ─────────────────────────────────────────
+
+  @Public()
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @Throttle({ default: { limit: 5, ttl: 60000 } }) // 5 attempts per minute
+  @ApiOperation({ summary: 'Reset password using a token' })
+  @ApiBody({ type: ResetPasswordDto })
+  @ApiResponse({
+    status: 200,
+    description: 'Password has been reset successfully',
+  })
+  @ApiResponse({ status: 401, description: 'TOKEN_INVALID or TOKEN_EXPIRED — invalid or expired reset token' })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto);
   }
 
   // ─── POST /v1/auth/refresh ──────────────────────────────────────────────────

@@ -25,23 +25,50 @@ const pageTitles: Record<string, { title: string; breadcrumbs?: string[] }> = {
     breadcrumbs: ['Настройки', 'Уведомления'],
   },
   '/onboarding': { title: 'Настройка' },
+  '/housekeeping': { title: 'Housekeeping' },
+  '/group-bookings': { title: 'Групповые бронирования' },
+  '/settings/general': {
+    title: 'Основные настройки',
+    breadcrumbs: ['Настройки', 'Основные'],
+  },
+  '/settings/team': {
+    title: 'Команда',
+    breadcrumbs: ['Настройки', 'Команда'],
+  },
+  '/settings/pricing': {
+    title: 'Ценообразование',
+    breadcrumbs: ['Настройки', 'Ценообразование'],
+  },
+  '/settings/extras': {
+    title: 'Доп. услуги',
+    breadcrumbs: ['Настройки', 'Доп. услуги'],
+  },
+  '/settings/floor-plan': {
+    title: 'План этажей',
+    breadcrumbs: ['Настройки', 'План этажей'],
+  },
+  '/settings/booking-page': {
+    title: 'Онлайн-бронирование',
+    breadcrumbs: ['Настройки', 'Онлайн-бронирование'],
+  },
 };
 
 function getPageInfo(pathname: string): { title: string; breadcrumbs?: string[] } {
-  // Check exact match first
   if (pageTitles[pathname]) {
     return pageTitles[pathname];
   }
 
-  // Check for dynamic routes (e.g., /bookings/123)
   if (pathname.startsWith('/bookings/')) {
     return { title: 'Бронирование', breadcrumbs: ['Бронирования'] };
   }
   if (pathname.startsWith('/guests/')) {
     return { title: 'Гость', breadcrumbs: ['Гости'] };
   }
+  if (pathname.startsWith('/settings/')) {
+    return { title: 'Настройки' };
+  }
 
-  return { title: 'Sardoba PMS' };
+  return { title: 'Панель управления' };
 }
 
 // ─── Header component ───────────────────────────────────────────────────────
@@ -93,9 +120,12 @@ export function Header() {
               <div className="w-8 h-8 rounded-full bg-sardoba-blue flex items-center justify-center text-white text-sm font-semibold">
                 {user.name.charAt(0).toUpperCase()}
               </div>
-              <span className="hidden sm:block text-sm font-medium text-gray-700">
-                {user.name}
-              </span>
+              <div className="hidden sm:block">
+                <p className="text-sm font-medium text-gray-700 leading-tight">
+                  {user.name}
+                </p>
+                <p className="text-[10px] text-gray-400 leading-tight">Администратор</p>
+              </div>
             </div>
           )}
         </div>

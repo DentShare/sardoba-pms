@@ -1,5 +1,5 @@
 import { api } from '@/lib/api';
-import type { Room, PaginatedResponse } from '@sardoba/shared';
+import type { Room } from '@sardoba/shared';
 
 export interface CreateRoomDto {
   property_id: number;
@@ -32,10 +32,11 @@ export interface UpdateRoomDto {
  * List all rooms for a property.
  */
 export async function listRooms(propertyId: number): Promise<Room[]> {
-  const { data } = await api.get<Room[]>('/rooms', {
-    params: { property_id: propertyId },
-  });
-  return data;
+  const { data } = await api.get(
+    `/properties/${propertyId}/rooms`,
+  );
+  // API returns paginated { data: [...], meta: {...} }
+  return data?.data ?? (Array.isArray(data) ? data : []);
 }
 
 /**
@@ -50,7 +51,10 @@ export async function getRoom(id: number): Promise<Room> {
  * Create a new room.
  */
 export async function createRoom(dto: CreateRoomDto): Promise<Room> {
-  const { data } = await api.post<Room>('/rooms', dto);
+  const { data } = await api.post<Room>(
+    `/properties/${dto.property_id}/rooms`,
+    dto,
+  );
   return data;
 }
 
@@ -61,7 +65,7 @@ export async function updateRoom(
   id: number,
   dto: UpdateRoomDto,
 ): Promise<Room> {
-  const { data } = await api.patch<Room>(`/rooms/${id}`, dto);
+  const { data } = await api.put<Room>(`/rooms/${id}`, dto);
   return data;
 }
 

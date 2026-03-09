@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/cn';
@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { api } from '@/lib/api';
+import { useAuth } from '@/lib/auth';
 
 const STEPS = [
   { id: 1, title: 'Информация об отеле' },
@@ -40,6 +41,7 @@ const ROOM_TYPE_OPTIONS = [
 
 export default function OnboardingPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
 
@@ -48,18 +50,61 @@ export default function OnboardingPage() {
   const [city, setCity] = useState('Samarkand');
   const [phone, setPhone] = useState('');
   const [currency, setCurrency] = useState('UZS');
+  const [coverPhoto, setCoverPhoto] = useState<string | null>(null);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverPhotoRef = useRef<HTMLInputElement>(null);
 
   // Step 2: First room
   const [roomName, setRoomName] = useState('');
   const [roomType, setRoomType] = useState('double');
   const [roomPrice, setRoomPrice] = useState('');
   const [roomCapacity, setRoomCapacity] = useState('2');
+  const [roomPhoto, setRoomPhoto] = useState<string | null>(null);
+  const [uploadingRoomPhoto, setUploadingRoomPhoto] = useState(false);
+  const roomPhotoRef = useRef<HTMLInputElement>(null);
 
   // Step 3: Telegram
   const [telegramChatId, setTelegramChatId] = useState('');
 
   // Step 4: Invite admin
   const [adminEmail, setAdminEmail] = useState('');
+
+  const handleCoverPhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingCover(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'cover');
+      const { data } = await api.post('/properties/photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setCoverPhoto(data.url);
+    } catch {
+      setCoverPhoto(URL.createObjectURL(file));
+    }
+    setUploadingCover(false);
+    if (coverPhotoRef.current) coverPhotoRef.current.value = '';
+  }, []);
+
+  const handleRoomPhotoUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingRoomPhoto(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const { data } = await api.post('/rooms/photos', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setRoomPhoto(data.url);
+    } catch {
+      setRoomPhoto(URL.createObjectURL(file));
+    }
+    setUploadingRoomPhoto(false);
+    if (roomPhotoRef.current) roomPhotoRef.current.value = '';
+  }, []);
 
   const handleNext = useCallback(async () => {
     if (step === 1) {
@@ -78,6 +123,7 @@ export default function OnboardingPage() {
           locale: 'ru',
           checkin_time: '14:00',
           checkout_time: '12:00',
+          cover_photo: coverPhoto,
         });
         toast.success('Отель создан');
         setStep(2);
@@ -93,8 +139,7 @@ export default function OnboardingPage() {
       if (roomName && roomPrice) {
         setLoading(true);
         try {
-          await api.post('/rooms', {
-            property_id: 1,
+          await api.post(`/properties/${user?.propertyId ?? 1}/rooms`, {
             name: roomName,
             room_type: roomType,
             capacity_adults: Number(roomCapacity),
@@ -115,19 +160,16 @@ export default function OnboardingPage() {
       if (telegramChatId) {
         setLoading(true);
         try {
-          await api.put('/notifications/settings', {
-            propertyId: 1,
-            telegramRecipients: [
-              { name: 'Владелец', chatId: telegramChatId, isActive: true },
+          await api.put(`/properties/${user?.propertyId ?? 1}/notification-settings`, {
+            telegram_recipients: [
+              { name: 'Владелец', chat_id: telegramChatId, is_active: true },
             ],
-            events: {
-              newBooking: true,
-              cancellation: true,
-              dailyDigest: true,
-              dailyDigestTime: '09:00',
-              paymentReceived: true,
-              syncError: true,
-            },
+            event_new_booking: true,
+            event_cancellation: true,
+            event_daily_digest: true,
+            daily_digest_time: '09:00',
+            event_payment: true,
+            event_sync_error: true,
           });
           toast.success('Telegram подключен');
         } catch {
@@ -145,7 +187,7 @@ export default function OnboardingPage() {
         setLoading(true);
         try {
           await api.post('/users/invite', {
-            property_id: 1,
+            property_id: user?.propertyId ?? 0,
             email: adminEmail,
             role: 'admin',
           });
@@ -158,7 +200,7 @@ export default function OnboardingPage() {
       }
       router.push('/calendar');
     }
-  }, [step, hotelName, city, phone, currency, roomName, roomType, roomPrice, roomCapacity, telegramChatId, adminEmail, router]);
+  }, [step, hotelName, city, phone, currency, coverPhoto, roomName, roomType, roomPrice, roomCapacity, telegramChatId, adminEmail, router]);
 
   const handleSkip = useCallback(() => {
     if (step < 4) {
@@ -233,6 +275,38 @@ export default function OnboardingPage() {
               <p className="text-sm text-gray-600">
                 Укажите основную информацию о вашем отеле.
               </p>
+
+              {/* Cover photo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Фото отеля
+                </label>
+                {coverPhoto ? (
+                  <div className="relative group rounded-xl overflow-hidden aspect-[16/9]">
+                    <img src={coverPhoto} alt="Обложка" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                        <button onClick={() => coverPhotoRef.current?.click()} className="px-3 py-1.5 bg-white text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors">Заменить</button>
+                        <button onClick={() => setCoverPhoto(null)} className="px-3 py-1.5 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors">Удалить</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => coverPhotoRef.current?.click()}
+                    disabled={uploadingCover}
+                    className="w-full aspect-[16/9] rounded-xl border-2 border-dashed border-gray-300 hover:border-sardoba-gold flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-sardoba-gold transition-colors disabled:opacity-50"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <span className="text-sm">{uploadingCover ? 'Загрузка...' : 'Загрузить фото отеля'}</span>
+                  </button>
+                )}
+                <input ref={coverPhotoRef} type="file" accept="image/*" onChange={handleCoverPhotoUpload} className="hidden" />
+              </div>
+
               <Input
                 label="Название отеля"
                 value={hotelName}
@@ -268,6 +342,38 @@ export default function OnboardingPage() {
               <p className="text-sm text-gray-600">
                 Добавьте ваш первый номер. Остальные можно добавить позже в настройках.
               </p>
+
+              {/* Room photo */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Фото номера
+                </label>
+                {roomPhoto ? (
+                  <div className="relative group rounded-xl overflow-hidden aspect-[16/9]">
+                    <img src={roomPhoto} alt="Фото номера" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center">
+                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex gap-2">
+                        <button onClick={() => roomPhotoRef.current?.click()} className="px-3 py-1.5 bg-white text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors">Заменить</button>
+                        <button onClick={() => setRoomPhoto(null)} className="px-3 py-1.5 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition-colors">Удалить</button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => roomPhotoRef.current?.click()}
+                    disabled={uploadingRoomPhoto}
+                    className="w-full aspect-[16/9] rounded-xl border-2 border-dashed border-gray-300 hover:border-sardoba-gold flex flex-col items-center justify-center gap-2 text-gray-400 hover:text-sardoba-gold transition-colors disabled:opacity-50"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" />
+                    </svg>
+                    <span className="text-sm">{uploadingRoomPhoto ? 'Загрузка...' : 'Загрузить фото номера'}</span>
+                  </button>
+                )}
+                <input ref={roomPhotoRef} type="file" accept="image/*" onChange={handleRoomPhotoUpload} className="hidden" />
+              </div>
+
               <Input
                 label="Название номера"
                 value={roomName}

@@ -5,6 +5,7 @@ import { PropertyExtra } from '@/database/entities/property-extra.entity';
 import { BookingExtra } from '@/database/entities/booking-extra.entity';
 import { Booking } from '@/database/entities/booking.entity';
 import { Guest } from '@/database/entities/guest.entity';
+import { WidgetEvent } from '@/database/entities/widget-event.entity';
 import { BookingsModule } from '../bookings/bookings.module';
 import { RatesModule } from '../rates/rates.module';
 import { GuestsModule } from '../guests/guests.module';
@@ -19,6 +20,7 @@ import { PublicBookingService } from './public-booking.service';
       BookingExtra,
       Booking,
       Guest,
+      WidgetEvent,
     ]),
     BookingsModule,
     RatesModule,

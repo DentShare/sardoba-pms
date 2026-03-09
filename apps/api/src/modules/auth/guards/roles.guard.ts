@@ -32,6 +32,11 @@ export class RolesGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user as JwtPayload;
 
+    // Super admin bypasses all role checks
+    if (user?.role === 'super_admin') {
+      return true;
+    }
+
     if (!user || !requiredRoles.includes(user.role)) {
       throw new SardobaException(
         ErrorCode.FORBIDDEN,
