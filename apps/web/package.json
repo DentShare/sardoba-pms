@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3002",
-    "build": "next build",
+    "build": "next build && node -e \"const fs=require('fs'),p='.next/server/app/(dashboard)/page_client-reference-manifest.js';if(!fs.existsSync(p)){fs.mkdirSync(require('path').dirname(p),{recursive:true});fs.writeFileSync(p,'self.__RSC_MANIFEST={}')}\"",
     "start": "next start",
     "lint": "next lint",
     "test": "jest",
