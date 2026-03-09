@@ -25,7 +25,7 @@ import {
   useSetLateCheckout,
   useRemoveLateCheckout,
 } from '@/lib/hooks/use-flexibility';
-import { listPayments, createPayment, generatePaymeQr, getPaymeQrStatus, type PaymentsResponse } from '@/lib/api/payments';
+import { listPayments, createPayment, generatePaymeQr, getPaymeQrStatus } from '@/lib/api/payments';
 import { listInvoices, createInvoice, downloadInvoicePdf, type Invoice, type CreateInvoiceDto } from '@/lib/api/invoices';
 import { formatMoney } from '@/lib/utils/money';
 import { formatDate, formatDateTime, getNights } from '@/lib/utils/dates';
