@@ -1,7 +1,6 @@
 import { ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { AuthGuard } from '@nestjs/passport';
-import { Observable } from 'rxjs';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { SardobaException, ErrorCode } from '@sardoba/shared';
 
@@ -21,9 +20,7 @@ export class JwtAuthGuard extends AuthGuard('jwt') {
     super();
   }
 
-  canActivate(
-    context: ExecutionContext,
-  ): boolean | Promise<boolean> | Observable<boolean> {
+  canActivate(context: ExecutionContext) {
     // Check if route is marked as @Public()
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
