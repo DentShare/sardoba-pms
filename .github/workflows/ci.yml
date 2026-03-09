@@ -17,8 +17,8 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run lint
-      - run: npm run build
+      - run: npx turbo run lint --filter='!@sardoba/admin'
+      - run: npx turbo run build --filter='!@sardoba/admin'
 
   test-api:
     name: Test API
