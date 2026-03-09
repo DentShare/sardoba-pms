@@ -11,7 +11,7 @@
     "test:watch": "jest --watch",
     "test:cov": "jest --coverage",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "lint": "eslint \"{src,test}/**/*.ts\" --fix",
+    "lint": "eslint \"src/**/*.ts\" --fix",
     "clean": "rimraf dist",
     "seed:demo": "ts-node -r tsconfig-paths/register src/database/seeds/demo-seed.ts"
   },
