@@ -17,7 +17,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
           migrationsRun: true,
           synchronize: false,
           logging: isProduction ? ['error', 'warn', 'migration'] : true,
-          ssl: isProduction ? { rejectUnauthorized: true } : false,
+          ssl: isProduction ? { rejectUnauthorized: false } : false,
           extra: {
             max: config.get<number>('DATABASE_POOL_MAX', isProduction ? 20 : 10),
             min: config.get<number>('DATABASE_POOL_MIN', isProduction ? 5 : 2),
