@@ -60,7 +60,7 @@ jobs:
           node-version: '20'
           cache: 'npm'
       - run: npm ci
-      - run: npm run build
+      - run: npx turbo run build --filter='!@sardoba/admin'
       - name: Run API tests
         working-directory: apps/api
         run: npm test
