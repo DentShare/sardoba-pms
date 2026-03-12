@@ -691,15 +691,31 @@ export default function BookingDetailPage() {
         }
       >
         <div className="space-y-4">
-          <Input
-            label="Сумма (сум)"
-            type="number"
-            value={payAmount}
-            onChange={(e) => setPayAmount(e.target.value)}
-            min={1}
-            placeholder="0"
-            required
-          />
+          <div>
+            <Input
+              label="Сумма (сум)"
+              type="number"
+              value={payAmount}
+              onChange={(e) => setPayAmount(e.target.value)}
+              min={1}
+              placeholder="0"
+              required
+            />
+            {balance > 0 && (
+              <button
+                type="button"
+                onClick={() => setPayAmount(String(balance))}
+                className="mt-1.5 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-sardoba-gold/10 text-sardoba-gold-dark hover:bg-sardoba-gold/20 border border-sardoba-gold/30 transition-colors"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2a10 10 0 0 1 0 20 10 10 0 0 1 0-20z" fill="currentColor" opacity="0.15" />
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 2v4M12 18v4M2 12h4M18 12h4" />
+                </svg>
+                Весь остаток: {formatMoney(balance)}
+              </button>
+            )}
+          </div>
           <Select
             label="Способ оплаты"
             value={payMethod}
@@ -712,11 +728,6 @@ export default function BookingDetailPage() {
             onChange={(e) => setPayNotes(e.target.value)}
             placeholder="Номер транзакции, комментарий..."
           />
-          {balance > 0 && (
-            <p className="text-sm text-gray-500">
-              Остаток к оплате: {formatMoney(balance)}
-            </p>
-          )}
         </div>
       </Modal>
 
