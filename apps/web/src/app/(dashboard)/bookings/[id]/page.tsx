@@ -57,6 +57,9 @@ export default function BookingDetailPage() {
   const checkoutMut = useCheckoutBooking();
   const cancelMut = useCancelBooking();
 
+  // Early checkout confirmation modal
+  const [showEarlyCheckoutModal, setShowEarlyCheckoutModal] = useState(false);
+
   // Payment modal state
   const [showPayment, setShowPayment] = useState(false);
   const [payAmount, setPayAmount] = useState('');
@@ -237,9 +240,21 @@ export default function BookingDetailPage() {
     await checkinMut.mutateAsync(booking.id);
   }, [booking, checkinMut]);
 
-  const handleCheckout = useCallback(async () => {
+  const handleCheckout = useCallback(() => {
+    if (!booking) return;
+    const today = new Date().toISOString().split('T')[0];
+    const isEarly = today < booking.checkOut;
+    if (isEarly) {
+      setShowEarlyCheckoutModal(true);
+    } else {
+      checkoutMut.mutate(booking.id);
+    }
+  }, [booking, checkoutMut]);
+
+  const handleConfirmEarlyCheckout = useCallback(async () => {
     if (!booking) return;
     await checkoutMut.mutateAsync(booking.id);
+    setShowEarlyCheckoutModal(false);
   }, [booking, checkoutMut]);
 
   const handleCancel = useCallback(async () => {
@@ -442,9 +457,13 @@ export default function BookingDetailPage() {
                 </span>
                 <span className={cn(
                   'font-medium',
-                  balance <= 0 ? 'text-green-600' : 'text-orange-600',
+                  balance < 0 ? 'text-blue-600' : balance === 0 ? 'text-green-600' : 'text-orange-600',
                 )}>
-                  {balance <= 0 ? 'Оплачено полностью' : `Остаток: ${formatMoney(balance)}`}
+                  {balance < 0
+                    ? `Переплата: ${formatMoney(Math.abs(balance))}`
+                    : balance === 0
+                    ? 'Оплачено полностью'
+                    : `Остаток: ${formatMoney(balance)}`}
                 </span>
               </div>
               <div className="h-3 bg-gray-200 rounded-full overflow-hidden">
@@ -602,14 +621,21 @@ export default function BookingDetailPage() {
                 <span className="font-medium text-green-600">{formatMoney(booking.paidAmount)}</span>
               </div>
               <div className="border-t border-gray-100 pt-3 flex justify-between text-sm">
-                <span className="font-medium text-gray-700">Остаток</span>
+                <span className="font-medium text-gray-700">
+                  {balance < 0 ? 'Переплата' : 'Остаток'}
+                </span>
                 <span className={cn(
                   'font-bold',
-                  balance <= 0 ? 'text-green-600' : 'text-red-600',
+                  balance < 0 ? 'text-blue-600' : balance === 0 ? 'text-green-600' : 'text-red-600',
                 )}>
-                  {formatMoney(Math.max(0, balance))}
+                  {formatMoney(Math.abs(balance))}
                 </span>
               </div>
+              {balance < 0 && (
+                <div className="mt-2 p-2 bg-blue-50 rounded-lg text-xs text-blue-700 font-medium">
+                  Вернуть гостю: {formatMoney(Math.abs(balance))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -669,6 +695,86 @@ export default function BookingDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Early Checkout Confirmation Modal */}
+      {booking && (() => {
+        const today = new Date().toISOString().split('T')[0];
+        const actualNights = getNights(booking.checkIn, today);
+        // Proportional estimate (backend recalculates precisely via rate engine)
+        const estimatedTotal = booking.nights > 0
+          ? Math.round((actualNights / booking.nights) * booking.totalAmount)
+          : 0;
+        const overpaid = booking.paidAmount - estimatedTotal;
+
+        return (
+          <Modal
+            open={showEarlyCheckoutModal}
+            onClose={() => setShowEarlyCheckoutModal(false)}
+            title="Ранний выезд"
+            footer={
+              <>
+                <Button variant="outline" onClick={() => setShowEarlyCheckoutModal(false)}>
+                  Отмена
+                </Button>
+                <Button
+                  variant="primary"
+                  onClick={handleConfirmEarlyCheckout}
+                  loading={checkoutMut.isPending}
+                >
+                  Выселить
+                </Button>
+              </>
+            }
+          >
+            <div className="space-y-4">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                Гость выезжает раньше запланированной даты
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="p-3 bg-gray-50 rounded-lg">
+                  <div className="text-gray-500 text-xs mb-1">По брони</div>
+                  <div className="font-semibold">{booking.nights} ноч.</div>
+                  <div className="text-gray-600">{formatDate(booking.checkOut)}</div>
+                  <div className="font-medium mt-1">{formatMoney(booking.totalAmount)}</div>
+                </div>
+                <div className="p-3 bg-blue-50 rounded-lg">
+                  <div className="text-blue-600 text-xs mb-1">Фактически</div>
+                  <div className="font-semibold">{actualNights} ноч.</div>
+                  <div className="text-gray-600">{formatDate(today)}</div>
+                  <div className="font-medium mt-1">~{formatMoney(estimatedTotal)}</div>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 pt-3 space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Оплачено гостем</span>
+                  <span className="font-medium">{formatMoney(booking.paidAmount)}</span>
+                </div>
+                {overpaid > 0 ? (
+                  <div className="flex justify-between items-center p-2.5 bg-blue-50 rounded-lg border border-blue-200">
+                    <span className="font-semibold text-blue-800">Вернуть гостю</span>
+                    <span className="font-bold text-blue-700 text-base">{formatMoney(overpaid)}</span>
+                  </div>
+                ) : overpaid < 0 ? (
+                  <div className="flex justify-between items-center p-2.5 bg-orange-50 rounded-lg border border-orange-200">
+                    <span className="font-semibold text-orange-800">Доплата</span>
+                    <span className="font-bold text-orange-700 text-base">{formatMoney(Math.abs(overpaid))}</span>
+                  </div>
+                ) : (
+                  <div className="p-2.5 bg-green-50 rounded-lg border border-green-200 text-center text-green-700 font-medium">
+                    Расчёт точный, возврат не требуется
+                  </div>
+                )}
+              </div>
+
+              <p className="text-xs text-gray-400">
+                * Точная сумма будет пересчитана системой по тарифу
+              </p>
+            </div>
+          </Modal>
+        );
+      })()}
 
       {/* Add Payment Modal */}
       <Modal

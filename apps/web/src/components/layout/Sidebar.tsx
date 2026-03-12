@@ -320,7 +320,7 @@ export function Sidebar() {
         className={cn(
           'fixed inset-y-0 left-0 z-40 w-64 bg-sardoba-blue flex flex-col',
           'transition-transform duration-300 ease-in-out',
-          'lg:translate-x-0 lg:static lg:z-auto',
+          'lg:translate-x-0 lg:static lg:z-auto lg:h-screen',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
         )}
       >
@@ -340,7 +340,7 @@ export function Sidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3">
+        <nav className="flex-1 overflow-y-auto min-h-0 py-4 px-3">
           <ul className="space-y-1">
             {navigation.map((item) => {
               const active = isActive(item.href);
