@@ -1119,6 +1119,45 @@ export class BookingsService {
     const occupiedRooms = inHouse.length;
     const occupancy = totalRooms > 0 ? Math.round((occupiedRooms / totalRooms) * 100) : 0;
 
+    // Guest counts for in-house bookings
+    const inHouseAdults = inHouse.reduce((sum, b) => sum + (b.adults || 1), 0);
+    const inHouseChildren = inHouse.reduce((sum, b) => sum + (b.children || 0), 0);
+    const breakfastToday = inHouseAdults + inHouseChildren;
+
+    // Tomorrow's breakfast forecast:
+    // = in-house guests who don't check out tomorrow
+    // + confirmed/new arrivals for tomorrow
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+    // Guests staying through tomorrow (checkOut > tomorrow)
+    const stayingTomorrow = inHouse.filter((b) => b.checkOut > tomorrowStr);
+    const stayingAdults = stayingTomorrow.reduce((sum, b) => sum + (b.adults || 1), 0);
+    const stayingChildren = stayingTomorrow.reduce((sum, b) => sum + (b.children || 0), 0);
+
+    // Confirmed arrivals for tomorrow
+    const tomorrowArrivals = await this.bookingRepository.find({
+      where: [
+        { propertyId, checkIn: tomorrowStr as any, status: 'confirmed' },
+        { propertyId, checkIn: tomorrowStr as any, status: 'new' },
+      ],
+    });
+    const arrivalAdults = tomorrowArrivals.reduce((sum, b) => sum + (b.adults || 1), 0);
+    const arrivalChildren = tomorrowArrivals.reduce((sum, b) => sum + (b.children || 0), 0);
+
+    // Also count today's arrivals (confirmed) who will stay through tomorrow
+    const todayArrivalsStaying = arrivals.filter(
+      (b) => b.checkOut > tomorrowStr,
+    );
+    const todayArrAdults = todayArrivalsStaying.reduce((sum, b) => sum + (b.adults || 1), 0);
+    const todayArrChildren = todayArrivalsStaying.reduce((sum, b) => sum + (b.children || 0), 0);
+
+    const breakfastTomorrow =
+      stayingAdults + stayingChildren +
+      arrivalAdults + arrivalChildren +
+      todayArrAdults + todayArrChildren;
+
     const toBookingSummary = (b: Booking) => ({
       id: b.id,
       booking_number: b.bookingNumber,
@@ -1146,6 +1185,13 @@ export class BookingsService {
         departures_count: departures.length,
         in_house_count: inHouse.length,
         today_revenue: Number(todayRevenueResult?.total || 0),
+      },
+      guest_counts: {
+        in_house_adults: inHouseAdults,
+        in_house_children: inHouseChildren,
+        in_house_total: inHouseAdults + inHouseChildren,
+        breakfast_today: breakfastToday,
+        breakfast_tomorrow: breakfastTomorrow,
       },
       arrivals: arrivals.map(toBookingSummary),
       departures: departures.map(toBookingSummary),

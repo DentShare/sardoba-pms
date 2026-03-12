@@ -174,6 +174,13 @@ export interface TodaySummary {
     inHouseCount: number;
     todayRevenue: number;
   };
+  guestCounts: {
+    inHouseAdults: number;
+    inHouseChildren: number;
+    inHouseTotal: number;
+    breakfastToday: number;
+    breakfastTomorrow: number;
+  };
   arrivals: TodaySummaryBooking[];
   departures: TodaySummaryBooking[];
   inHouse: TodaySummaryBooking[];
