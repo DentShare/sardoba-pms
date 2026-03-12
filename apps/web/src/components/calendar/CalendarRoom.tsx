@@ -90,7 +90,7 @@ export function CalendarRoomRow({
       <div
         className={cn(
           'flex items-center gap-2 px-3 py-2 bg-white border-r border-gray-200',
-          'sticky left-0 z-20 min-w-[160px] max-w-[160px]',
+          'sticky left-0 z-20 min-w-[200px] max-w-[200px]',
         )}
       >
         <div className="truncate">

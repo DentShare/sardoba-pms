@@ -85,7 +85,7 @@ export function CalendarGrid({ propertyId }: CalendarGridProps) {
         {/* Date headers */}
         <div className="flex sticky top-0 z-30 bg-white border-b border-gray-200">
           {/* Room label header cell */}
-          <div className="min-w-[160px] max-w-[160px] px-3 py-2 bg-gray-50 border-r border-gray-200 sticky left-0 z-30 text-xs font-medium text-gray-500">
+          <div className="min-w-[200px] max-w-[200px] px-3 py-2 bg-gray-50 border-r border-gray-200 sticky left-0 z-30 text-xs font-medium text-gray-500">
             Номер
           </div>
 
