@@ -738,6 +738,47 @@ export class BookingsService {
     }
 
     const oldStatus = booking.status;
+    const today = new Date().toISOString().split('T')[0];
+
+    // Early checkout: if today < original checkOut, recalculate
+    const isEarlyCheckout = today < booking.checkOut && today > booking.checkIn;
+
+    const oldValues: Record<string, unknown> = { status: oldStatus };
+    const newValues: Record<string, unknown> = { status: 'checked_out' };
+
+    if (isEarlyCheckout) {
+      const oldCheckOut = booking.checkOut;
+      const oldNights = booking.nights;
+      const oldTotal = Number(booking.totalAmount);
+
+      booking.checkOut = today;
+      booking.nights = differenceInCalendarDays(
+        parseISO(today),
+        parseISO(booking.checkIn),
+      );
+
+      // Recalculate price for actual nights stayed
+      const rateCalculation = await this.ratesService.calculate(
+        booking.propertyId,
+        booking.roomId,
+        booking.checkIn,
+        today,
+        booking.rateId ?? undefined,
+      );
+      booking.totalAmount = rateCalculation.total;
+
+      // Remove late checkout if set (no longer relevant)
+      booking.lateCheckoutTime = null;
+      booking.lateCheckoutPrice = 0;
+
+      oldValues.check_out = oldCheckOut;
+      oldValues.nights = oldNights;
+      oldValues.total_amount = oldTotal;
+      newValues.check_out = today;
+      newValues.nights = booking.nights;
+      newValues.total_amount = rateCalculation.total;
+    }
+
     booking.status = 'checked_out';
 
     await this.dataSource.transaction(async (manager) => {
@@ -747,8 +788,8 @@ export class BookingsService {
         bookingId: booking.id,
         userId,
         action: 'STATUS_CHANGED',
-        oldValue: { status: oldStatus },
-        newValue: { status: 'checked_out' },
+        oldValue: oldValues,
+        newValue: newValues,
       });
       await manager.save(BookingHistory, history);
     });
