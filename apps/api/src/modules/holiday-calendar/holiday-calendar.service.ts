@@ -140,7 +140,7 @@ export class HolidayCalendarService {
         `(
           (holiday.recurYearly = false AND holiday.dateFrom <= :date AND holiday.dateTo >= :date)
           OR
-          (holiday.recurYearly = true AND SUBSTRING(holiday.dateFrom, 6) <= :monthDay AND SUBSTRING(holiday.dateTo, 6) >= :monthDay)
+          (holiday.recurYearly = true AND TO_CHAR(holiday.dateFrom, 'MM-DD') <= :monthDay AND TO_CHAR(holiday.dateTo, 'MM-DD') >= :monthDay)
         )`,
         { date, monthDay },
       )
