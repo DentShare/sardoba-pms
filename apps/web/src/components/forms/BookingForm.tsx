@@ -142,7 +142,7 @@ export function BookingForm({
     }
   }, [
     guestId, newGuest, roomId, checkIn, checkOut, adults, children, source, notes,
-    propertyId, createBooking, onClose, nights,
+    propertyId, createBooking, onClose, nights, walkIn, confirmMut, checkinMut,
   ]);
 
   return (

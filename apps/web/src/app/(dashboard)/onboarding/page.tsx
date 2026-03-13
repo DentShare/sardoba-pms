@@ -139,7 +139,7 @@ export default function OnboardingPage() {
       if (roomName && roomPrice) {
         setLoading(true);
         try {
-          await api.post(`/properties/${user?.propertyId ?? 1}/rooms`, {
+          await api.post(`/properties/${user?.propertyId}/rooms`, {
             name: roomName,
             room_type: roomType,
             capacity_adults: Number(roomCapacity),
@@ -160,7 +160,7 @@ export default function OnboardingPage() {
       if (telegramChatId) {
         setLoading(true);
         try {
-          await api.put(`/properties/${user?.propertyId ?? 1}/notification-settings`, {
+          await api.put(`/properties/${user?.propertyId}/notification-settings`, {
             telegram_recipients: [
               { name: 'Владелец', chat_id: telegramChatId, is_active: true },
             ],
@@ -187,7 +187,7 @@ export default function OnboardingPage() {
         setLoading(true);
         try {
           await api.post('/users/invite', {
-            property_id: user?.propertyId ?? 0,
+            property_id: user?.propertyId,
             email: adminEmail,
             role: 'admin',
           });
