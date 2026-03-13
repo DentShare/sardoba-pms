@@ -1,7 +1,6 @@
 'use client';
 
 import { cn } from '@/lib/cn';
-import { IconUser, IconPhone, IconMail, IconNotes } from '../icons/booking-icons';
 
 interface GuestInfoFormProps {
   firstName: string;
@@ -19,7 +18,7 @@ interface GuestInfoFormProps {
 }
 
 /**
- * Step 5: Guest info (first name, last name, phone, email, notes).
+ * Guest info fields — compact layout for form card.
  */
 export function GuestInfoForm({
   firstName,
@@ -33,104 +32,64 @@ export function GuestInfoForm({
   onEmailChange,
   onNotesChange,
   formErrors,
-  stepNumber,
 }: GuestInfoFormProps) {
   return (
-    <div className="booking-card p-6">
-      <h3
-        className="flex items-center gap-2 text-lg font-semibold text-t-text mb-4"
-        style={{ fontFamily: 'var(--t-font-heading)' }}
-      >
-        <span className="w-7 h-7 rounded-full bg-t-primary text-white text-sm flex items-center justify-center font-bold">
-          {stepNumber}
-        </span>
+    <div>
+      <label className="block text-[10px] uppercase tracking-[0.08em] font-medium mb-3" style={{ color: 'var(--t-text-subtle)' }}>
         Данные гостя
-      </h3>
-      <div className="grid sm:grid-cols-2 gap-4">
+      </label>
+      <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-sm font-medium text-t-text-muted mb-1">
-            <IconUser className="inline w-4 h-4 mr-1 text-t-text-subtle" />
-            Имя <span className="text-red-500">*</span>
-          </label>
           <input
             type="text"
             value={firstName}
             onChange={(e) => onFirstNameChange(e.target.value)}
-            placeholder="Иван"
-            className={cn(
-              'booking-input w-full',
-              formErrors.firstName && 'border-red-500',
-            )}
+            placeholder="Имя *"
+            className={cn('booking-input w-full', formErrors.firstName && 'border-red-500')}
           />
-          {formErrors.firstName && <p className="mt-1 text-xs text-red-600">{formErrors.firstName}</p>}
+          {formErrors.firstName && <p className="mt-1 text-[11px] text-red-500">{formErrors.firstName}</p>}
         </div>
         <div>
-          <label className="block text-sm font-medium text-t-text-muted mb-1">
-            <IconUser className="inline w-4 h-4 mr-1 text-t-text-subtle" />
-            Фамилия <span className="text-red-500">*</span>
-          </label>
           <input
             type="text"
             value={lastName}
             onChange={(e) => onLastNameChange(e.target.value)}
-            placeholder="Петров"
-            className={cn(
-              'booking-input w-full',
-              formErrors.lastName && 'border-red-500',
-            )}
+            placeholder="Фамилия *"
+            className={cn('booking-input w-full', formErrors.lastName && 'border-red-500')}
           />
-          {formErrors.lastName && <p className="mt-1 text-xs text-red-600">{formErrors.lastName}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-t-text-muted mb-1">
-            <IconPhone className="inline w-4 h-4 mr-1 text-t-text-subtle" />
-            Телефон <span className="text-red-500">*</span>
-          </label>
-          <input
-            type="tel"
-            value={phone}
-            onChange={(e) => {
-              let val = e.target.value;
-              if (!val.startsWith('+998')) val = '+998' + val.replace(/^\+?998?/, '');
-              onPhoneChange(val);
-            }}
-            placeholder="+998 90 123 45 67"
-            className={cn(
-              'booking-input w-full',
-              formErrors.phone && 'border-red-500',
-            )}
-          />
-          {formErrors.phone && <p className="mt-1 text-xs text-red-600">{formErrors.phone}</p>}
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-t-text-muted mb-1">
-            <IconMail className="inline w-4 h-4 mr-1 text-t-text-subtle" />
-            Email <span className="text-t-text-subtle text-xs font-normal">(необязательно)</span>
-          </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => onEmailChange(e.target.value)}
-            placeholder="ivan@example.com"
-            className={cn(
-              'booking-input w-full',
-              formErrors.email && 'border-red-500',
-            )}
-          />
-          {formErrors.email && <p className="mt-1 text-xs text-red-600">{formErrors.email}</p>}
+          {formErrors.lastName && <p className="mt-1 text-[11px] text-red-500">{formErrors.lastName}</p>}
         </div>
       </div>
-
-      <div className="mt-4">
-        <label className="block text-sm font-medium text-t-text-muted mb-1">
-          <IconNotes className="inline w-4 h-4 mr-1 text-t-text-subtle" />
-          Примечание <span className="text-t-text-subtle text-xs font-normal">(необязательно)</span>
-        </label>
+      <div className="mt-3">
+        <input
+          type="tel"
+          value={phone}
+          onChange={(e) => {
+            let val = e.target.value;
+            if (!val.startsWith('+998')) val = '+998' + val.replace(/^\+?998?/, '');
+            onPhoneChange(val);
+          }}
+          placeholder="Телефон / WhatsApp *"
+          className={cn('booking-input w-full', formErrors.phone && 'border-red-500')}
+        />
+        {formErrors.phone && <p className="mt-1 text-[11px] text-red-500">{formErrors.phone}</p>}
+      </div>
+      <div className="mt-3">
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => onEmailChange(e.target.value)}
+          placeholder="Email (необязательно)"
+          className={cn('booking-input w-full', formErrors.email && 'border-red-500')}
+        />
+        {formErrors.email && <p className="mt-1 text-[11px] text-red-500">{formErrors.email}</p>}
+      </div>
+      <div className="mt-3">
         <textarea
           value={notes}
           onChange={(e) => onNotesChange(e.target.value)}
-          placeholder="Особые пожелания, время прибытия и т.д."
-          rows={3}
+          placeholder="Особые пожелания (необязательно)"
+          rows={2}
           className="booking-input w-full resize-none"
         />
       </div>

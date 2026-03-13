@@ -12,7 +12,7 @@ interface GuestCounterProps {
 }
 
 /**
- * Step 3: Adults + Children counters.
+ * Step 3: Compact adults + children counters.
  */
 export function GuestCounter({
   adults,
@@ -23,15 +23,11 @@ export function GuestCounter({
   maxChildren,
 }: GuestCounterProps) {
   return (
-    <div className="booking-card p-6">
-      <h3
-        className="flex items-center gap-2 text-lg font-semibold text-t-text mb-4"
-        style={{ fontFamily: 'var(--t-font-heading)' }}
-      >
-        <span className="w-7 h-7 rounded-full bg-t-primary text-white text-sm flex items-center justify-center font-bold">3</span>
+    <div>
+      <label className="block text-[10px] uppercase tracking-[0.08em] font-medium mb-3" style={{ color: 'var(--t-text-subtle)' }}>
         Гости
-      </h3>
-      <div className="space-y-4 max-w-sm">
+      </label>
+      <div className="space-y-3">
         <Counter
           label="Взрослые"
           value={adults}

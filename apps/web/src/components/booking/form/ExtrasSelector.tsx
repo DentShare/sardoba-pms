@@ -17,7 +17,7 @@ interface ExtrasSelectorProps {
 }
 
 /**
- * Step 4: Extras checkboxes with prices.
+ * Extras checkboxes — compact layout for form card.
  */
 export function ExtrasSelector({
   extras,
@@ -26,51 +26,41 @@ export function ExtrasSelector({
   onUpdateExtraQuantity,
   adults,
   children,
-  stepNumber,
 }: ExtrasSelectorProps) {
   if (extras.length === 0) return null;
 
   return (
-    <div className="booking-card p-6">
-      <h3
-        className="flex items-center gap-2 text-lg font-semibold text-t-text mb-4"
-        style={{ fontFamily: 'var(--t-font-heading)' }}
-      >
-        <span className="w-7 h-7 rounded-full bg-t-primary text-white text-sm flex items-center justify-center font-bold">
-          {stepNumber}
-        </span>
+    <div>
+      <label className="block text-[10px] uppercase tracking-[0.08em] font-medium mb-3" style={{ color: 'var(--t-text-subtle)' }}>
         Дополнительные услуги
-      </h3>
-      <div className="space-y-3">
+      </label>
+      <div className="space-y-2">
         {extras.map((extra) => (
           <label
             key={extra.id}
             className={cn(
-              'flex items-center gap-4 p-3 border cursor-pointer transition-all duration-200',
+              'flex items-center gap-3 px-3 py-2.5 border cursor-pointer transition-all duration-200',
               selectedExtras[extra.id]
                 ? 'border-t-primary bg-t-primary/5'
-                : 'border-t-border-subtle bg-t-surface hover:border-t-border-subtle/80',
+                : 'border-t-border-subtle hover:border-t-primary/30',
             )}
-            style={{ borderRadius: 'var(--t-card-radius)' }}
+            style={{ borderRadius: 'var(--t-card-radius, 8px)' }}
           >
             <input
               type="checkbox"
               checked={!!selectedExtras[extra.id]}
               onChange={() => onToggleExtra(extra.id)}
-              className="w-4 h-4 rounded border-t-border-subtle"
+              className="w-4 h-4 rounded border-t-border-subtle shrink-0"
               style={{ accentColor: 'var(--t-primary)' }}
             />
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium text-t-text">{extra.name}</span>
-              {extra.description && (
-                <p className="text-xs text-t-text-subtle mt-0.5">{extra.description}</p>
-              )}
+              <span className="text-sm font-medium" style={{ color: 'var(--t-text)' }}>{extra.name}</span>
             </div>
             <div className="text-right shrink-0">
-              <span className="text-sm font-bold text-t-primary">
+              <span className="text-sm font-bold" style={{ color: 'var(--t-primary)' }}>
                 {formatMoney(extra.price)}
               </span>
-              <span className="block text-xs text-t-text-subtle">
+              <span className="block text-[10px]" style={{ color: 'var(--t-text-subtle)' }}>
                 {PRICE_TYPE_LABELS[extra.price_type]}
               </span>
             </div>
