@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { usePropertyId } from '@/lib/hooks/use-property-id';
 import { cn } from '@/lib/cn';
 import { formatMoney } from '@/lib/utils/money';
 import { api } from '@/lib/api';
@@ -9,8 +10,6 @@ import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Modal } from '@/components/ui/Modal';
 import { PageHeader } from '@/components/layout/PageHeader';
-
-const PROPERTY_ID = 1;
 
 /* ── Types ───────────────────────────────────────────────────────────────── */
 
@@ -126,6 +125,7 @@ function IconService({ className = '' }: { className?: string }) {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export default function ExtrasSettingsPage() {
+  const propertyId = usePropertyId() ?? 1;
   const [extras, setExtras] = useState<Extra[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -141,18 +141,18 @@ export default function ExtrasSettingsPage() {
   /* ── Load extras ───────────────────────────────────────────────────────── */
   const loadExtras = useCallback(async () => {
     try {
-      const { data } = await api.get(`/properties/${PROPERTY_ID}/extras`);
+      const { data } = await api.get(`/properties/${propertyId}/extras`);
       setExtras(Array.isArray(data) ? data : data.data || []);
     } catch {
       // silently fail
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [propertyId]);
 
   useEffect(() => {
-    loadExtras();
-  }, [loadExtras]);
+    if (propertyId) loadExtras();
+  }, [loadExtras, propertyId]);
 
   /* ── Open modal ────────────────────────────────────────────────────────── */
   function openCreate() {
@@ -203,9 +203,9 @@ export default function ExtrasSettingsPage() {
 
     try {
       if (editId) {
-        await api.put(`/properties/${PROPERTY_ID}/extras/${editId}`, payload);
+        await api.put(`/properties/${propertyId}/extras/${editId}`, payload);
       } else {
-        await api.post(`/properties/${PROPERTY_ID}/extras`, payload);
+        await api.post(`/properties/${propertyId}/extras`, payload);
       }
       setModalOpen(false);
       loadExtras();
@@ -219,7 +219,7 @@ export default function ExtrasSettingsPage() {
   /* ── Delete ────────────────────────────────────────────────────────────── */
   async function handleDelete(id: number) {
     try {
-      await api.delete(`/properties/${PROPERTY_ID}/extras/${id}`);
+      await api.delete(`/properties/${propertyId}/extras/${id}`);
       setDeleteConfirm(null);
       loadExtras();
     } catch {
@@ -230,7 +230,7 @@ export default function ExtrasSettingsPage() {
   /* ── Toggle active ─────────────────────────────────────────────────────── */
   async function toggleActive(extra: Extra) {
     try {
-      await api.put(`/properties/${PROPERTY_ID}/extras/${extra.id}`, { is_active: !extra.is_active });
+      await api.put(`/properties/${propertyId}/extras/${extra.id}`, { is_active: !extra.is_active });
       loadExtras();
     } catch {
       // silently fail
@@ -259,7 +259,7 @@ export default function ExtrasSettingsPage() {
     const sortOrders = extras.map((ex, idx) => ({ id: ex.id, sort_order: idx }));
     try {
       // Reorder endpoint not yet implemented — silently skip
-      // await api.patch(`/properties/${PROPERTY_ID}/extras/reorder`, { items: sortOrders });
+      // await api.patch(`/properties/${propertyId}/extras/reorder`, { items: sortOrders });
     } catch {
       // Reload to revert on failure
       loadExtras();

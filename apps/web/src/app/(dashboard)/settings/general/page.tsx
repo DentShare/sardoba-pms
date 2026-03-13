@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { usePropertyId } from '@/lib/hooks/use-property-id';
 import toast from 'react-hot-toast';
 import { cn } from '@/lib/cn';
 import { api } from '@/lib/api';
@@ -18,8 +19,6 @@ import {
 } from '@/lib/api/property';
 
 /* ── Constants ──────────────────────────────────────────────────────────── */
-
-const PROPERTY_ID = 1;
 
 const CURRENCY_OPTIONS = [
   { value: 'UZS', label: 'UZS — Узбекский сум' },
@@ -141,6 +140,7 @@ const EMPTY_FORM: FormState = {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 export default function SettingsGeneralPage() {
+  const propertyId = usePropertyId() ?? 1;
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -149,7 +149,7 @@ export default function SettingsGeneralPage() {
   /* ── Load property ─────────────────────────────────────────────────────── */
   const loadProperty = useCallback(async () => {
     try {
-      const property = await getProperty(PROPERTY_ID);
+      const property = await getProperty(propertyId);
       setForm({
         name: property.name || '',
         slug: property.slug || '',
@@ -173,11 +173,11 @@ export default function SettingsGeneralPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [propertyId]);
 
   useEffect(() => {
-    loadProperty();
-  }, [loadProperty]);
+    if (propertyId) loadProperty();
+  }, [loadProperty, propertyId]);
 
   /* ── Update form field ─────────────────────────────────────────────────── */
   function updateField<K extends keyof FormState>(key: K, value: FormState[K]) {
@@ -189,7 +189,7 @@ export default function SettingsGeneralPage() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const { url } = await uploadPropertyPhoto(PROPERTY_ID, file, 'cover');
+      const { url } = await uploadPropertyPhoto(propertyId, file, 'cover');
       setForm((prev) => ({ ...prev, cover_photo: url }));
       toast.success('Фото загружено');
     } catch {
@@ -201,7 +201,7 @@ export default function SettingsGeneralPage() {
   async function handleCoverRemove() {
     if (!form.cover_photo) return;
     try {
-      await deletePropertyPhoto(PROPERTY_ID, form.cover_photo, 'cover');
+      await deletePropertyPhoto(propertyId, form.cover_photo, 'cover');
     } catch { /* silent */ }
     setForm((prev) => ({ ...prev, cover_photo: '' }));
   }
@@ -234,7 +234,7 @@ export default function SettingsGeneralPage() {
         booking_com_review_url: form.booking_com_review_url.trim() || null,
       };
 
-      await updateProperty(PROPERTY_ID, dto);
+      await updateProperty(propertyId, dto);
       toast.success('Настройки сохранены');
     } catch {
       toast.error('Ошибка сохранения. Попробуйте ещё раз.');

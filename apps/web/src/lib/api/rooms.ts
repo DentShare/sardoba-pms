@@ -90,3 +90,20 @@ export async function uploadRoomPhoto(
   );
   return data;
 }
+
+/**
+ * Block a room for a date range (maintenance, cleaning, etc.)
+ */
+export async function blockRoom(
+  roomId: number,
+  from: string,
+  to: string,
+  reason?: string,
+): Promise<{ id: number }> {
+  const { data } = await api.post<{ id: number }>(`/rooms/${roomId}/blocks`, {
+    from,
+    to,
+    reason: reason || undefined,
+  });
+  return data;
+}

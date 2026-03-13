@@ -12,7 +12,7 @@ import { Modal } from '@/components/ui/Modal';
 import { Badge } from '@/components/ui/Badge';
 import { PageSpinner } from '@/components/ui/Spinner';
 import { useRooms, useCreateRoom, useUpdateRoom } from '@/lib/hooks/use-rooms';
-import { uploadRoomPhoto } from '@/lib/api/rooms';
+import { uploadRoomPhoto, blockRoom } from '@/lib/api/rooms';
 import { formatMoney } from '@/lib/utils/money';
 import type { Room, RoomType, RoomStatus } from '@sardoba/shared';
 import { usePropertyId } from '@/lib/hooks/use-property-id';
@@ -86,6 +86,7 @@ export default function SettingsRoomsPage() {
   const [blockFrom, setBlockFrom] = useState('');
   const [blockTo, setBlockTo] = useState('');
   const [blockReason, setBlockReason] = useState('');
+  const [blockSaving, setBlockSaving] = useState(false);
 
   const resetForm = useCallback(() => {
     setName('');
@@ -529,16 +530,26 @@ export default function SettingsRoomsPage() {
               Отмена
             </Button>
             <Button
-              onClick={() => {
+              loading={blockSaving}
+              onClick={async () => {
                 if (!blockFrom || !blockTo) {
                   toast.error('Укажите даты');
                   return;
                 }
-                toast.success('Номер заблокирован');
-                setShowBlock(false);
-                setBlockFrom('');
-                setBlockTo('');
-                setBlockReason('');
+                if (!blockRoomId) return;
+                setBlockSaving(true);
+                try {
+                  await blockRoom(blockRoomId, blockFrom, blockTo, blockReason);
+                  toast.success('Номер заблокирован');
+                  setShowBlock(false);
+                  setBlockFrom('');
+                  setBlockTo('');
+                  setBlockReason('');
+                } catch {
+                  toast.error('Ошибка при блокировке номера');
+                } finally {
+                  setBlockSaving(false);
+                }
               }}
             >
               Заблокировать
