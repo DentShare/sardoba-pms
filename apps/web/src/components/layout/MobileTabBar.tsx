@@ -45,9 +45,9 @@ function MoreIcon({ className = '' }: { className?: string }) {
 }
 
 const tabs = [
-  { href: '/analytics', icon: BarChartIcon, label: 'Главная' },
-  { href: '/calendar', icon: GridIcon, label: 'Шахматка' },
-  { href: '/bookings', icon: CalendarIcon, label: 'Брони' },
+  { href: '/dashboard', icon: GridIcon, label: 'Сегодня' },
+  { href: '/calendar', icon: CalendarIcon, label: 'Шахматка' },
+  { href: '/bookings', icon: BarChartIcon, label: 'Брони' },
   { href: '/guests', icon: UsersIcon, label: 'Гости' },
   { href: '/settings', icon: MoreIcon, label: 'Ещё' },
 ];
@@ -62,8 +62,7 @@ export function MobileTabBar() {
       style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
       {tabs.map((tab) => {
-        const active =
-          pathname === tab.href || pathname.startsWith(tab.href + '/');
+        const active = pathname === tab.href || pathname.startsWith(tab.href + '/');
         return (
           <Link
             key={tab.href}

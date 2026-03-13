@@ -196,6 +196,15 @@ interface NavItem {
 
 const navigation: NavItem[] = [
   {
+    label: 'Сегодня',
+    href: '/dashboard',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="3" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" />
+      </svg>
+    ),
+  },
+  {
     label: 'Шахматка',
     href: '/calendar',
     icon: <CalendarIcon size={20} />,
@@ -290,9 +299,7 @@ export function Sidebar() {
   );
 
   const isActive = (href: string) => {
-    if (href === '/settings') {
-      return pathname.startsWith('/settings');
-    }
+    if (href === '/settings') return pathname.startsWith('/settings');
     return pathname === href || pathname.startsWith(href + '/');
   };
 

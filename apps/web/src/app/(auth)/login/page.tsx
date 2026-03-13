@@ -33,9 +33,9 @@ function LoginForm() {
     try {
       await login(email, password);
 
-      // Redirect to the intended page or /calendar (validated to prevent open redirect)
-      const raw = searchParams.get('redirect') || '/calendar';
-      const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/calendar';
+      // Redirect to the intended page or /dashboard (validated to prevent open redirect)
+      const raw = searchParams.get('redirect') || '/dashboard';
+      const redirect = raw.startsWith('/') && !raw.startsWith('//') ? raw : '/dashboard';
       router.push(redirect);
     } catch (err: unknown) {
       if (err instanceof Error && err.message) {

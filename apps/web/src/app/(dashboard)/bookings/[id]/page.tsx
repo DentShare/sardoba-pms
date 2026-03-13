@@ -356,11 +356,15 @@ export default function BookingDetailPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
                 <div className="text-sm text-gray-500">Гость</div>
-                <div className="font-medium text-gray-900">#{booking.guestId}</div>
+                <div className="font-medium text-gray-900">
+                  {(booking as any).guestName || `#${booking.guestId}`}
+                </div>
               </div>
               <div>
                 <div className="text-sm text-gray-500">Комната</div>
-                <div className="font-medium text-gray-900">#{booking.roomId}</div>
+                <div className="font-medium text-gray-900">
+                  {(booking as any).roomName || `#${booking.roomId}`}
+                </div>
               </div>
               <div>
                 <div className="text-sm text-gray-500">Заезд</div>
@@ -419,22 +423,6 @@ export default function BookingDetailPage() {
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-semibold text-gray-900">Оплаты</h2>
               <div className="flex gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    setPaymeAmount(balance > 0 ? String(balance / 100) : '');
-                    setPaymeQrUrl('');
-                    setShowPaymeModal(true);
-                  }}
-                  icon={
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="3" width="18" height="18" rx="2" /><path d="M3 9h18" /><path d="M9 3v18" />
-                    </svg>
-                  }
-                >
-                  Payme QR
-                </Button>
                 <Button
                   size="sm"
                   onClick={() => setShowPayment(true)}
