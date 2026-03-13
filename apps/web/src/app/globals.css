@@ -373,6 +373,57 @@
   [data-theme-mode="dark"] .booking-input::placeholder {
     color: var(--t-text-subtle);
   }
+
+  /* ── Outline button for room cards ── */
+  .booking-btn-outline {
+    background: var(--t-bg);
+    color: var(--t-text);
+    border: 1.5px solid var(--t-border-subtle);
+    border-radius: var(--t-btn-radius);
+    font-weight: 600;
+    padding: 0.625rem 1.25rem;
+    transition: all 0.2s;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    text-decoration: none;
+  }
+  .booking-btn-outline:hover {
+    background: var(--t-primary);
+    border-color: var(--t-primary);
+    color: #fff;
+  }
+
+  /* ── Hero floating card animations ── */
+  .hero-float {
+    animation: heroFloatY 4s ease-in-out infinite;
+  }
+  .hero-float-delay {
+    animation: heroFloatY 5s 1s ease-in-out infinite;
+  }
+
+  @keyframes heroFloatY {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
+  }
+
+  /* ── Section reveal animation ── */
+  .reveal-section {
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal-section.visible {
+    opacity: 1;
+    transform: none;
+  }
+
+  /* ── Custom scrollbar for booking pages ── */
+  [data-booking-page]::-webkit-scrollbar { width: 6px; }
+  [data-booking-page]::-webkit-scrollbar-track { background: var(--t-bg-alt); }
+  [data-booking-page]::-webkit-scrollbar-thumb { background: var(--t-border-subtle); border-radius: 3px; }
 }
 
 @layer utilities {

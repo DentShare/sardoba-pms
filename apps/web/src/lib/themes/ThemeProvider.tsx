@@ -13,6 +13,18 @@ interface BookingThemeContextValue {
 
 const BookingThemeContext = createContext<BookingThemeContextValue | null>(null);
 
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+/** Convert hex color to "R,G,B" string for use in rgba() */
+function hexToRgb(hex: string): string {
+  const h = hex.replace('#', '');
+  if (h.length !== 6) return '0,0,0';
+  const r = parseInt(h.slice(0, 2), 16);
+  const g = parseInt(h.slice(2, 4), 16);
+  const b = parseInt(h.slice(4, 6), 16);
+  return `${r},${g},${b}`;
+}
+
 // ─── CSS Variable Conversion ────────────────────────────────────────────────
 
 /**
@@ -33,9 +45,11 @@ function themeToCssVars(
   return {
     // Colors
     '--t-primary': c.primary,
+    '--t-primary-rgb': hexToRgb(c.primary),
     '--t-primary-light': c.primaryLight,
     '--t-primary-dark': c.primaryDark,
     '--t-secondary': c.secondary,
+    '--t-secondary-rgb': hexToRgb(c.secondary),
     '--t-bg': c.background,
     '--t-bg-alt': c.backgroundAlt,
     '--t-surface': c.surface,

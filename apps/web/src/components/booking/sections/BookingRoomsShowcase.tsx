@@ -4,8 +4,7 @@ import type { HotelRoom } from '@/lib/api/public-booking';
 import { formatMoney } from '@/lib/utils/money';
 import { cn } from '@/lib/cn';
 import { useBookingTheme } from '@/lib/themes';
-import { IconBed, IconUsers, IconChild } from '../icons/booking-icons';
-import { AmenityBadge } from '../shared/AmenityBadge';
+import { IconBed, IconUsers } from '../icons/booking-icons';
 import { ROOM_TYPE_LABELS } from '../constants';
 
 interface BookingRoomsShowcaseProps {
@@ -13,10 +12,23 @@ interface BookingRoomsShowcaseProps {
   showPrices?: boolean;
 }
 
+const AMENITY_SHORT: Record<string, string> = {
+  wifi: 'Wi-Fi',
+  ac: 'Кондиционер',
+  tv: 'ТВ',
+  fridge: 'Холодильник',
+  balcony: 'Балкон',
+  view: 'Вид',
+  bathtub: 'Ванна',
+  shower: 'Душ',
+  safe: 'Сейф',
+  minibar: 'Мини-бар',
+  kettle: 'Чайник',
+};
+
 /**
- * Display-only grid of room cards (3 columns desktop, 1 mobile).
- * Each card shows photo/gradient, room type, name, amenities, capacity, price.
- * Card variant adapts to theme: gold-accent, eco, numbered, or default.
+ * Room cards grid matching hotel-site-cozy.html:
+ * 3-column grid with photo, badge, name, description, specs row, price+CTA footer.
  */
 export function BookingRoomsShowcase({ rooms, showPrices = true }: BookingRoomsShowcaseProps) {
   const { theme } = useBookingTheme();
@@ -25,36 +37,51 @@ export function BookingRoomsShowcase({ rooms, showPrices = true }: BookingRoomsS
   if (!rooms || rooms.length === 0) return null;
 
   return (
-    <section id="rooms" className="py-16 sm:py-20 bg-t-bg">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2
-            className="text-2xl sm:text-3xl font-bold text-t-primary mb-3"
-            style={{ fontFamily: 'var(--t-font-heading)' }}
-          >
-            Наши номера
-          </h2>
-          <p className="text-t-text-muted max-w-lg mx-auto">
-            Выберите номер, идеально подходящий для вашего отдыха
+    <section id="rooms" className="py-16 sm:py-24" style={{ background: 'var(--t-bg)' }}>
+      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 lg:px-14">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-end justify-between mb-12 gap-3">
+          <div>
+            <span
+              className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold mb-4"
+              style={{
+                backgroundColor: 'rgba(var(--t-secondary-rgb, 74,124,89), 0.1)',
+                color: 'var(--t-secondary, var(--t-primary))',
+              }}
+            >
+              Номера
+            </span>
+            <h2
+              className="text-3xl sm:text-4xl lg:text-[46px] leading-[1.2] tracking-tight"
+              style={{ fontFamily: 'var(--t-font-heading)', fontWeight: 400, letterSpacing: '-0.02em' }}
+            >
+              Выберите <em className="italic text-t-primary">свой уголок</em>
+            </h2>
+          </div>
+          <p className="text-[13px] text-t-text-subtle max-w-[220px] leading-relaxed">
+            {rooms.length} {rooms.length === 1 ? 'номер' : rooms.length < 5 ? 'номера' : 'номеров'} &middot; Все с кондиционером
           </p>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Room cards grid */}
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 mb-10">
           {rooms.map((room, index) => (
             <div
               key={room.id}
               className={cn(
-                'booking-card overflow-hidden group hover:shadow-lg transition-all duration-500 hover:-translate-y-1 p-0',
+                'rounded-3xl overflow-hidden transition-all duration-300 cursor-pointer group',
+                'hover:-translate-y-1.5 hover:shadow-2xl',
                 variant === 'gold-accent' && 'border border-t-primary/20',
               )}
+              style={{ background: 'var(--t-surface)' }}
             >
-              {/* Room photo */}
-              <div className="aspect-[16/10] relative overflow-hidden">
+              {/* Photo */}
+              <div className="h-[200px] relative overflow-hidden">
                 {room.photos.length > 0 ? (
                   <img
                     src={room.photos[0]}
                     alt={room.name}
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                 ) : (
                   <div
@@ -65,22 +92,18 @@ export function BookingRoomsShowcase({ rooms, showPrices = true }: BookingRoomsS
                   </div>
                 )}
                 {/* Type badge */}
-                <span className="absolute top-3 left-3 px-3 py-1 bg-black/60 backdrop-blur-sm text-white text-xs font-medium rounded-full">
+                <span
+                  className="absolute top-3.5 left-3.5 px-3 py-1 rounded-full text-[11px] font-semibold backdrop-blur-md"
+                  style={{ background: 'rgba(255,255,255,.88)', color: 'var(--t-text)' }}
+                >
                   {ROOM_TYPE_LABELS[room.room_type] || room.room_type}
                 </span>
 
-                {/* Eco badge (fresh-green theme) */}
                 {variant === 'eco' && (
-                  <span className="absolute top-3 right-3 px-2.5 py-1 bg-green-600/90 backdrop-blur-sm text-white text-xs font-medium rounded-full flex items-center gap-1">
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3c-4.97 0-9 4.03-9 9h2c0-3.87 3.13-7 7-7s7 3.13 7 7h2c0-4.97-4.03-9-9-9Z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 21V12m0 0-3 3m3-3 3 3" />
-                    </svg>
+                  <span className="absolute top-3.5 right-3.5 px-2.5 py-1 bg-green-600/90 backdrop-blur-sm text-white text-[11px] font-semibold rounded-full">
                     Эко
                   </span>
                 )}
-
-                {/* Numbered overlay (minimal-white theme) */}
                 {variant === 'numbered' && (
                   <span className="absolute bottom-3 right-3 text-5xl font-bold text-white/20 leading-none">
                     {String(index + 1).padStart(2, '0')}
@@ -88,57 +111,56 @@ export function BookingRoomsShowcase({ rooms, showPrices = true }: BookingRoomsS
                 )}
               </div>
 
-              {/* Info */}
-              <div className="p-5">
-                <h3 className="text-lg font-bold text-t-text mb-2">{room.name}</h3>
-
-                <div className="flex items-center gap-3 text-sm text-t-text-muted mb-3">
-                  <span className="flex items-center gap-1">
-                    <IconUsers className="w-4 h-4" />
-                    {room.capacity_adults} {room.capacity_adults === 1 ? 'взрослый' : room.capacity_adults < 5 ? 'взрослых' : 'взрослых'}
-                  </span>
-                  {room.capacity_children > 0 && (
-                    <span className="flex items-center gap-1">
-                      <IconChild className="w-3.5 h-3.5" />
-                      {room.capacity_children} {room.capacity_children === 1 ? 'ребёнок' : 'детей'}
-                    </span>
-                  )}
-                </div>
+              {/* Body */}
+              <div className="p-5 sm:p-6">
+                <h3
+                  className="text-xl mb-2"
+                  style={{ fontFamily: 'var(--t-font-heading)', fontWeight: 400 }}
+                >
+                  {room.name}
+                </h3>
 
                 {room.description && (
-                  <p className="text-sm text-t-text-muted mb-3 line-clamp-2">{room.description}</p>
+                  <p className="text-[13px] text-t-text-muted leading-relaxed mb-4 line-clamp-2">{room.description}</p>
                 )}
 
-                {/* Amenities */}
-                {room.amenities.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mb-4">
-                    {room.amenities.slice(0, 5).map((a) => (
-                      <AmenityBadge key={a} amenity={a} />
-                    ))}
-                    {room.amenities.length > 5 && (
-                      <span className="text-xs text-t-text-subtle px-2 py-1">
-                        +{room.amenities.length - 5}
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/* Specs row */}
+                <div className="flex gap-3 mb-5 flex-wrap">
+                  <span className="flex items-center gap-1 text-xs text-t-text-subtle font-medium">
+                    <IconUsers className="w-3.5 h-3.5 text-t-text-subtle" />
+                    {room.capacity_adults === 1 ? '1 гость' : `1\u2013${room.capacity_adults + (room.capacity_children || 0)} ${(room.capacity_adults + (room.capacity_children || 0)) < 5 ? 'гостя' : 'гостей'}`}
+                  </span>
+                  {room.amenities.slice(0, 2).map((a) => (
+                    <span key={a} className="flex items-center gap-1 text-xs text-t-text-subtle font-medium">
+                      <svg className="w-3.5 h-3.5" style={{ color: 'var(--t-border-subtle)' }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 6L9 17l-5-5" />
+                      </svg>
+                      {AMENITY_SHORT[a] || a}
+                    </span>
+                  ))}
+                </div>
 
-                {/* Price + CTA */}
-                <div className="flex items-end justify-between pt-3 border-t border-t-border-subtle">
+                {/* Footer: price + CTA */}
+                <div
+                  className="flex items-center justify-between pt-4 border-t"
+                  style={{ borderColor: 'var(--t-border-subtle)' }}
+                >
                   {showPrices ? (
-                    <div>
-                      <span className="text-xs text-t-text-subtle">от</span>
-                      <p className="text-xl font-bold text-t-primary">
+                    <div className="flex flex-col gap-px">
+                      <span
+                        className="text-2xl leading-none"
+                        style={{ fontFamily: 'var(--t-font-heading)', fontWeight: 400 }}
+                      >
                         {formatMoney(room.base_price)}
-                        <span className="text-sm font-normal text-t-text-subtle">/ночь</span>
-                      </p>
+                      </span>
+                      <span className="text-[11px] text-t-text-subtle font-medium">сум &middot; за ночь</span>
                     </div>
                   ) : (
                     <div />
                   )}
                   <a
                     href="#booking"
-                    className="booking-btn-primary px-4 py-2 text-sm"
+                    className="booking-btn-outline px-5 py-2.5 text-xs"
                   >
                     Выбрать
                   </a>
@@ -147,6 +169,16 @@ export function BookingRoomsShowcase({ rooms, showPrices = true }: BookingRoomsS
             </div>
           ))}
         </div>
+
+        {/* Wide CTA button */}
+        <a
+          href="#booking"
+          className="booking-btn-primary flex items-center justify-center gap-2.5 w-full py-5 text-[15px]"
+          style={{ borderRadius: 'var(--t-card-radius, 24px)' }}
+        >
+          <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M20 6L9 17l-5-5" /></svg>
+          Забронировать номер — цена лучше чем на Booking.com
+        </a>
       </div>
     </section>
   );

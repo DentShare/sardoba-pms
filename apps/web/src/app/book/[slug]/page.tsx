@@ -8,8 +8,10 @@ import type { ThemePresetId } from '@/lib/themes/types';
 import { BookingNavbar } from '@/components/booking/sections/BookingNavbar';
 import { BookingHero } from '@/components/booking/sections/BookingHero';
 import { BookingAbout } from '@/components/booking/sections/BookingAbout';
+import { BookingReviews } from '@/components/booking/sections/BookingReviews';
 import { BookingRoomsShowcase } from '@/components/booking/sections/BookingRoomsShowcase';
 import { BookingExtrasShowcase } from '@/components/booking/sections/BookingExtrasShowcase';
+import { BookingLocation } from '@/components/booking/sections/BookingLocation';
 import { BookingFormContainer } from '@/components/booking/form/BookingFormContainer';
 import { BookingContacts } from '@/components/booking/sections/BookingContacts';
 import { BookingFooter } from '@/components/booking/sections/BookingFooter';
@@ -109,7 +111,8 @@ export default function HotelBookingPage() {
   }
 
   /* ═══════════════════════════════════════════════════════════════════════
-     RENDER
+     RENDER — section order matches hotel-site-cozy.html:
+     Nav → Hero → About → Reviews → Rooms → Location → Booking Form → Contacts → Footer
      ═══════════════════════════════════════════════════════════════════════ */
   const showPrices = hotel.mini_site_config?.show_prices !== false;
 
@@ -120,7 +123,9 @@ export default function HotelBookingPage() {
         <BookingNavbar hotelName={hotel.name} logoUrl={hotel.mini_site_config?.logo_url} />
         <BookingHero hotel={hotel} />
         <BookingAbout hotel={hotel} />
+        <BookingReviews />
         <BookingRoomsShowcase rooms={hotel.rooms} showPrices={showPrices} />
+        <BookingLocation hotel={hotel} />
         {hotel.extras?.length > 0 && <BookingExtrasShowcase extras={hotel.extras} showPrices={showPrices} />}
         <BookingFormContainer hotel={hotel} slug={slug} />
         <BookingContacts hotel={hotel} />
