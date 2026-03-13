@@ -9,7 +9,8 @@ interface BookingHeroCenteredProps {
 
 /**
  * Full-viewport centered hero matching hotel-site-prototype.html (silk-road-luxury)
- * and modern-clean. Features: grain texture, ambient glow, search form, amenity bar.
+ * and modern-clean. Features: grain texture, ambient glow, fadeUp animations,
+ * search form, amenity bar.
  */
 export function BookingHeroCentered({ hotel }: BookingHeroCenteredProps) {
   const { theme, isDark } = useBookingTheme();
@@ -61,10 +62,10 @@ export function BookingHeroCentered({ hotel }: BookingHeroCenteredProps) {
         <div className="absolute inset-0 opacity-10" style={{ backgroundImage: theme.effects.backgroundPattern }} />
       )}
 
-      {/* Content */}
+      {/* Content — staggered fadeUp animation */}
       <div className="relative z-10 w-full max-w-[1100px] mx-auto px-6 sm:px-8 text-center">
         {/* Location chip with lines */}
-        <div className="inline-flex items-center gap-3 mb-8">
+        <div className="hero-fade-up hero-fade-up-1 inline-flex items-center gap-3 mb-8">
           <span className="w-8 h-px" style={{ background: isDark ? 'rgba(201,169,110,.3)' : 'rgba(255,255,255,.3)' }} />
           <span
             className="text-[11px] uppercase tracking-[0.12em] font-medium"
@@ -77,7 +78,7 @@ export function BookingHeroCentered({ hotel }: BookingHeroCenteredProps) {
 
         {/* Title */}
         <h1
-          className="mb-5"
+          className="hero-fade-up hero-fade-up-2 mb-5"
           style={{
             fontFamily: 'var(--t-font-heading)',
             fontSize: 'clamp(42px, 7vw, 86px)',
@@ -92,7 +93,7 @@ export function BookingHeroCentered({ hotel }: BookingHeroCenteredProps) {
 
         {/* Subtitle */}
         <p
-          className="text-[13px] sm:text-[14px] max-w-[400px] mx-auto mb-10 leading-[1.7]"
+          className="hero-fade-up hero-fade-up-3 text-[13px] sm:text-[14px] max-w-[400px] mx-auto mb-10 leading-[1.7]"
           style={{ color: isDark ? 'var(--t-text-muted)' : 'rgba(255,255,255,.65)' }}
         >
           {hotel.description
@@ -103,7 +104,7 @@ export function BookingHeroCentered({ hotel }: BookingHeroCenteredProps) {
         {/* Search form card */}
         <a
           href="#booking"
-          className="mx-auto max-w-[820px] flex flex-col sm:flex-row items-stretch overflow-hidden cursor-pointer"
+          className="hero-fade-up hero-fade-up-4 mx-auto max-w-[820px] flex flex-col sm:flex-row items-stretch overflow-hidden cursor-pointer"
           style={{
             background: isDark ? 'rgba(20, 20, 16, 0.85)' : 'rgba(255,255,255,0.1)',
             backdropFilter: 'blur(20px)',
@@ -147,7 +148,7 @@ export function BookingHeroCentered({ hotel }: BookingHeroCenteredProps) {
 
       {/* Amenity bar at bottom */}
       <div
-        className="absolute bottom-0 left-0 right-0 z-10 hidden sm:block"
+        className="hero-fade-up hero-fade-up-5 absolute bottom-0 left-0 right-0 z-10 hidden sm:block"
         style={{
           background: isDark ? 'rgba(10,10,8,.7)' : 'rgba(0,0,0,.3)',
           backdropFilter: 'blur(10px)',

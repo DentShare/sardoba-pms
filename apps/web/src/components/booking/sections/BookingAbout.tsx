@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import type { HotelPublicInfo } from '@/lib/api/public-booking';
 import { useBookingTheme } from '@/lib/themes';
 
@@ -14,7 +13,7 @@ interface BookingAboutProps {
  * Right: photo collage grid (3 photos)
  */
 export function BookingAbout({ hotel }: BookingAboutProps) {
-  const { theme } = useBookingTheme();
+  const { theme, isDark } = useBookingTheme();
 
   if (!hotel.description && (!hotel.photos || hotel.photos.length === 0)) {
     return null;
@@ -71,8 +70,12 @@ export function BookingAbout({ hotel }: BookingAboutProps) {
   ];
 
   return (
-    <section id="about" className="py-16 sm:py-24" style={{ background: 'var(--t-surface)' }}>
-      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 lg:px-14">
+    <section id="about" className="py-16 sm:py-24 relative" style={{ background: isDark ? 'var(--t-bg-alt)' : 'var(--t-surface)' }}>
+      {/* Background pattern from theme */}
+      {theme.effects.backgroundPattern && (
+        <div className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: theme.effects.backgroundPattern }} />
+      )}
+      <div className="max-w-[1200px] mx-auto px-5 sm:px-8 lg:px-14 relative z-10">
         <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-20 items-center">
           {/* Left: Text content */}
           <div>

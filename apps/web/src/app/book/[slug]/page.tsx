@@ -15,6 +15,7 @@ import { BookingLocation } from '@/components/booking/sections/BookingLocation';
 import { BookingFormContainer } from '@/components/booking/form/BookingFormContainer';
 import { BookingContacts } from '@/components/booking/sections/BookingContacts';
 import { BookingFooter } from '@/components/booking/sections/BookingFooter';
+import { RevealSection } from '@/components/booking/shared/RevealSection';
 import { IconSpinner } from '@/components/booking/icons/booking-icons';
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -122,13 +123,13 @@ export default function HotelBookingPage() {
       <div className="min-h-screen bg-t-bg" style={{ fontFamily: 'var(--t-font-body)' }}>
         <BookingNavbar hotelName={hotel.name} logoUrl={hotel.mini_site_config?.logo_url} />
         <BookingHero hotel={hotel} />
-        <BookingAbout hotel={hotel} />
-        <BookingReviews />
-        <BookingRoomsShowcase rooms={hotel.rooms} showPrices={showPrices} />
-        <BookingLocation hotel={hotel} />
-        {hotel.extras?.length > 0 && <BookingExtrasShowcase extras={hotel.extras} showPrices={showPrices} />}
-        <BookingFormContainer hotel={hotel} slug={slug} />
-        <BookingContacts hotel={hotel} />
+        <RevealSection><BookingAbout hotel={hotel} /></RevealSection>
+        <RevealSection><BookingReviews /></RevealSection>
+        <RevealSection><BookingRoomsShowcase rooms={hotel.rooms} showPrices={showPrices} /></RevealSection>
+        <RevealSection><BookingLocation hotel={hotel} /></RevealSection>
+        {hotel.extras?.length > 0 && <RevealSection><BookingExtrasShowcase extras={hotel.extras} showPrices={showPrices} /></RevealSection>}
+        <RevealSection><BookingFormContainer hotel={hotel} slug={slug} /></RevealSection>
+        <RevealSection><BookingContacts hotel={hotel} /></RevealSection>
         <BookingFooter hotel={hotel} />
       </div>
     </BookingThemeProvider>

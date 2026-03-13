@@ -420,6 +420,21 @@
     transform: none;
   }
 
+  /* ── Hero fadeUp entrance animation (staggered) ── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hero-fade-up {
+    opacity: 0;
+    animation: fadeUp 0.8s ease-out forwards;
+  }
+  .hero-fade-up-1 { animation-delay: 0.1s; }
+  .hero-fade-up-2 { animation-delay: 0.25s; }
+  .hero-fade-up-3 { animation-delay: 0.4s; }
+  .hero-fade-up-4 { animation-delay: 0.6s; }
+  .hero-fade-up-5 { animation-delay: 0.8s; }
+
   /* ── Custom scrollbar for booking pages ── */
   [data-booking-page]::-webkit-scrollbar { width: 6px; }
   [data-booking-page]::-webkit-scrollbar-track { background: var(--t-bg-alt); }
