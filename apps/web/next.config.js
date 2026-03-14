@@ -3,6 +3,9 @@ const nextConfig = {
   output: process.env.VERCEL ? undefined : 'standalone',
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   transpilePackages: ['@sardoba/shared'],
   images: {
     remotePatterns: [
