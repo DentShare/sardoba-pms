@@ -12,7 +12,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
         return {
           type: 'postgres' as const,
           url: config.get<string>('DATABASE_URL'),
-          entities: [__dirname + '/entities/*.entity.js'],
+          entities: [__dirname + '/entities/*.entity{.ts,.js}'],
           migrations: [__dirname + '/migrations/!(index).js'],
           migrationsRun: true,
           synchronize: false,

@@ -3,6 +3,9 @@ node_modules/
 .pnp
 .pnp.js
 
+# Database backups
+backups/
+
 # Build outputs
 dist/
 .next/

@@ -477,7 +477,33 @@ export class PublicBookingService {
     const totalAmount = subtotal - discountAmount;
 
     // Create booking + extras in a single transaction
-    const savedBooking = await this.dataSource.transaction(async (manager) => {
+    // Use SERIALIZABLE isolation + SELECT FOR UPDATE to prevent overbooking race condition
+    const savedBooking = await this.dataSource.transaction(
+      'SERIALIZABLE',
+      async (manager) => {
+      // Re-check availability INSIDE transaction with row-level lock
+      // Note: FOR UPDATE cannot be used with aggregate functions (getCount),
+      // so we use getMany() and check .length instead
+      const conflicting = await manager
+        .createQueryBuilder(Booking, 'b')
+        .setLock('pessimistic_write')
+        .where('b.roomId = :roomId', { roomId: dto.room_id })
+        .andWhere('b.checkIn < :checkOut', { checkOut: dto.check_out })
+        .andWhere('b.checkOut > :checkIn', { checkIn: dto.check_in })
+        .andWhere('b.status NOT IN (:...excluded)', {
+          excluded: ['cancelled', 'no_show'],
+        })
+        .select('b.id')
+        .getMany();
+
+      if (conflicting.length > 0) {
+        throw new SardobaException(
+          ErrorCode.OVERBOOKING_DETECTED,
+          { room_id: dto.room_id },
+          'Room is not available for the requested dates (concurrent booking detected)',
+        );
+      }
+
       // Generate booking number within transaction
       const bookingNumber =
         await this.bookingNumberService.generateInTransaction(manager);
@@ -520,7 +546,8 @@ export class PublicBookingService {
       }
 
       return saved;
-    });
+    },
+    );
 
     // Increment promo code usage after successful booking
     if (promoCodeId) {

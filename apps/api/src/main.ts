@@ -2,19 +2,16 @@ import { NestFactory } from '@nestjs/core';
 import {
   ValidationPipe,
   Logger,
-  Catch,
-  ArgumentsHost,
-  HttpException,
-  HttpStatus,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import * as Sentry from '@sentry/nestjs';
 import * as express from 'express';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import helmet from 'helmet';
-import { SardobaException } from '@sardoba/shared';
 import { AppModule } from './app.module';
+import { AllExceptionsFilter } from './filters/all-exceptions.filter';
 
 // ── Correlation ID middleware ──────────────────────────────────────────────────
 
@@ -61,56 +58,6 @@ function requestLoggerMiddleware(logger: Logger) {
   };
 }
 
-// ── Global exception filter ───────────────────────────────────────────────────
-
-@Catch()
-class AllExceptionsFilter {
-  private readonly logger = new Logger('ExceptionFilter');
-
-  catch(exception: unknown, host: ArgumentsHost) {
-    const ctx = host.switchToHttp();
-    const response = ctx.getResponse();
-    const request = ctx.getRequest();
-    const requestId = request.headers?.['x-request-id'] ?? '-';
-
-    let status = HttpStatus.INTERNAL_SERVER_ERROR;
-
-    if (exception instanceof SardobaException) {
-      status = exception.httpStatus;
-      if (status >= 500) {
-        this.logger.error(
-          `${request.method} ${request.url} → ${status} [${exception.code}] [${requestId}]`,
-          exception.stack,
-        );
-      }
-      response.status(status).json(exception.toJSON());
-      return;
-    }
-
-    if (exception instanceof HttpException) {
-      status = exception.getStatus();
-      if (status >= 500) {
-        this.logger.error(
-          `${request.method} ${request.url} → ${status} [${requestId}]`,
-          exception instanceof Error ? exception.stack : String(exception),
-        );
-      }
-      response.status(status).json(exception.getResponse());
-      return;
-    }
-
-    this.logger.error(
-      `${request.method} ${request.url} → 500 [${requestId}]`,
-      exception instanceof Error ? exception.stack : String(exception),
-    );
-    response.status(status).json({
-      statusCode: status,
-      message: 'Internal server error',
-      path: request.url,
-    });
-  }
-}
-
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 
 async function bootstrap(): Promise<void> {
@@ -125,6 +72,18 @@ async function bootstrap(): Promise<void> {
     'FRONTEND_URL',
     'http://localhost:3002',
   );
+
+  // Sentry error tracking
+  const sentryDsn = configService.get<string>('SENTRY_DSN');
+  if (sentryDsn) {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment: nodeEnv,
+      tracesSampleRate: isProduction ? 0.2 : 1.0,
+      sendDefaultPii: false,
+    });
+    logger.log('Sentry error tracking initialized');
+  }
 
   // Correlation ID — before everything else
   app.use(correlationMiddleware);
